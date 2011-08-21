@@ -353,7 +353,7 @@ flip'' :: (a -> b -> c) -> b -> a -> c
 flip'' f x y = f y x
 
 largestDivisible :: (Enum a, Num a, Integral a) => a -> a
-largestDivisible max = head [x | x <- reverse [1..max], mod x 3829 == 0]
+largestDivisible max = head $ filter (\a -> mod a 3829 == 0) $ reverse [1..max]
 
 main = do
   runTestTT $ TestList [assertEqualTestCase __LINE__ 4 $ doubleMe 2,
