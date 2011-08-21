@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 import Test.HUnit
 import Text.Printf
 
@@ -350,68 +352,73 @@ flip' f = g
 flip'' :: (a -> b -> c) -> b -> a -> c
 flip'' f x y = f y x
 
+largestDivisible :: (Enum a, Num a, Integral a) => a -> a
+largestDivisible max = head [x | x <- reverse [1..max], mod x 3829 == 0]
+
 main = do
-  runTestTT $ TestList [assertEqualTestCase 4 $ doubleMe 2,                                                                                 {- test 0 -}
-                        assertEqualTestCase 10 $ doubleUs 2 3,                                                                              {- test 1 -}
-                        assertEqualTestCase 4 $ doubleSmallNumber 2,                                                                        {- test 2 -}
-                        assertEqualTestCase 1000 $ doubleSmallNumber' 1000,                                                                 {- test 3 -}
-                        assertEqualTestCase "It's a-me, Conan O'Brien!" $ conanO'Brien,                                                     {- test 4 -}
-                        assertEqualTestCase 6 $ addThree 1 2 3,                                                                             {- test 5 -}
-                        assertEqualTestCase 24 $ factorial 4,                                                                               {- test 6 -}
-                        assertEqualTestCase 25.1327412 $ circumference 4,                                                                   {- test 7 -}
-                        assertEqualTestCase 25.132741228718345 $ circumference' 4,                                                          {- test 8 -}
-                        assertEqualTestCase "Luck number SEVEN!" $ lucky 7,                                                                 {- test 9 -}
-                        assertEqualTestCase 24 $ factorial' 4,                                                                              {- test 10 -}
-                        assertEqualTestCase "Nine" $ charName '9',                                                                          {- test 11 -}
-                        assertEqualTestCase (6, 10) $ addVectors (1, 3) (5, 7),                                                             {- test 12 -}
-                        assertEqualTestCase 2 $ first (2, 4, 6),                                                                            {- test 13 -}
-                        assertEqualTestCase 4 $ second (2, 4, 6),                                                                           {- test 14 -}
-                        assertEqualTestCase 6 $ third (2, 4, 6),                                                                            {- test 15 -}
-                        assertEqualTestCase [4, 7, 6, 8, 11, 4] $ patternMatchInComprehensions [(1,3), (4,3), (2,4), (5, 3), (5,6), (3,1)], {- test 16 -}
-                        assertEqualTestCase 6 $ head' [6, 2, 3],                                                                            {- test 17 -}
-                        assertEqualTestCase "Whiskey" $ nameit 'w',                                                                         {- test 18 -}
-                        assertEqualTestCase "Nine" $ nameit (9 :: Integer),                                                                 {- test 19 -}
-                        assertEqualTestCase "The list has one element: [1]" $ tell [1],                                                     {- test 20 -}
-                        assertEqualTestCase 3 $ length' [1, 2, 3],                                                                          {- test 21 -}
-                        assertEqualTestCase 10 $ sum' [1, 2, 3, 4],                                                                         {- test 22 -}
-                        assertEqualTestCase "The first letter of: \"Hello World!\" is 'H'" $ capital "Hello World!",                        {- test 23 -}
-                        assertEqualTestCase "You're fat! Lose some weight fatty!" $ bmiTell 27,                                             {- test 24 -}
-                        assertEqualTestCase "You're fat! Lose some weight fatty!" $ bmiTell' 215 5 11,                                      {- test 25 -}
-                        assertEqualTestCase 3 $ max' 2 3,                                                                                   {- test 26 -}
-                        assertEqualTestCase EQ $ myCompare 3 3,                                                                             {- test 27 -}
-                        assertEqualTestCase "You're fat! Lose some weight fatty!" $ bmiTell'' 215 5 11,                                     {- test 28 -}
-                        assertEqualTestCase "V. S." $ initials "Vanson" "Samuel",                                                           {- test 29 -}
-                        assertEqualTestCase [29.983138266217022] $ calcBmis [(215, 5, 11)],                                                 {- test 30 -}
-                        assertEqualTestCase 87.96459430051421 $ cylinder 2 5,                                                               {- test 31 -}
-                        assertEqualTestCase 42 $ 4 * (let x = 9 in x + 1) + 2,                                                              {- test 32 -}
-                        assertEqualTestCase [1, 4, 9, 16, 25, 36, 49, 64, 81, 100] $ [let square x = x^2 in square i | i <- [1..10]],       {- test 33 -}
-                        assertEqualTestCase [1, 4, 9, 16, 25, 36, 49, 64, 81, 100] $ [square | i <- [1..10], let square = i ^ 2],           {- test 34 -}
-                        assertEqualTestCase [29.983138266217022] $ calcBmis' [(215, 5, 11)],                                                {- test 35 -}
-                        assertEqualTestCase 100 $ head'' [100..200],                                                                        {- test 36 -}
-                        assertEqualTestCase "The list is a longer list." $ describeList [1, 2],                                             {- test 37 -}
-                        assertEqualTestCase "The list is a longer list." $ describeList' [1, 2],                                            {- test 38 -}
-                        assertEqualTestCase "The list is a longer list." $ describeList'' [1, 2],                                           {- test 39 -}
+  runTestTT $ TestList [assertEqualTestCase __LINE__ 4 $ doubleMe 2,
+                        assertEqualTestCase __LINE__ 10 $ doubleUs 2 3,
+                        assertEqualTestCase __LINE__ 4 $ doubleSmallNumber 2,
+                        assertEqualTestCase __LINE__ 1000 $ doubleSmallNumber' 1000,
+                        assertEqualTestCase __LINE__ "It's a-me, Conan O'Brien!" $ conanO'Brien,
+                        assertEqualTestCase __LINE__ 6 $ addThree 1 2 3,
+                        assertEqualTestCase __LINE__ 24 $ factorial 4,
+                        assertEqualTestCase __LINE__ 25.1327412 $ circumference 4,
+                        assertEqualTestCase __LINE__ 25.132741228718345 $ circumference' 4,
+                        assertEqualTestCase __LINE__ "Luck number SEVEN!" $ lucky 7,
+                        assertEqualTestCase __LINE__ 24 $ factorial' 4,
+                        assertEqualTestCase __LINE__ "Nine" $ charName '9',
+                        assertEqualTestCase __LINE__ (6, 10) $ addVectors (1, 3) (5, 7),
+                        assertEqualTestCase __LINE__ 2 $ first (2, 4, 6),
+                        assertEqualTestCase __LINE__ 4 $ second (2, 4, 6),
+                        assertEqualTestCase __LINE__ 6 $ third (2, 4, 6),
+                        assertEqualTestCase __LINE__ [4, 7, 6, 8, 11, 4] $ patternMatchInComprehensions [(1,3), (4,3), (2,4), (5, 3), (5,6), (3,1)],
+                        assertEqualTestCase __LINE__ 6 $ head' [6, 2, 3],
+                        assertEqualTestCase __LINE__ "Whiskey" $ nameit 'w',
+                        assertEqualTestCase __LINE__ "Nine" $ nameit (9 :: Integer),
+                        assertEqualTestCase __LINE__ "The list has one element: [1]" $ tell [1],
+                        assertEqualTestCase __LINE__ 3 $ length' [1, 2, 3],
+                        assertEqualTestCase __LINE__ 10 $ sum' [1, 2, 3, 4],
+                        assertEqualTestCase __LINE__ "The first letter of: \"Hello World!\" is 'H'" $ capital "Hello World!",
+                        assertEqualTestCase __LINE__ "You're fat! Lose some weight fatty!" $ bmiTell 27,
+                        assertEqualTestCase __LINE__ "You're fat! Lose some weight fatty!" $ bmiTell' 215 5 11,
+                        assertEqualTestCase __LINE__ 3 $ max' 2 3,
+                        assertEqualTestCase __LINE__ EQ $ myCompare 3 3,
+                        assertEqualTestCase __LINE__ "You're fat! Lose some weight fatty!" $ bmiTell'' 215 5 11,
+                        assertEqualTestCase __LINE__ "V. S." $ initials "Vanson" "Samuel",
+                        assertEqualTestCase __LINE__ [29.983138266217022] $ calcBmis [(215, 5, 11)],
+                        assertEqualTestCase __LINE__ 87.96459430051421 $ cylinder 2 5,
+                        assertEqualTestCase __LINE__ 42 $ 4 * (let x = 9 in x + 1) + 2,
+                        assertEqualTestCase __LINE__ [1, 4, 9, 16, 25, 36, 49, 64, 81, 100] $ [let square x = x^2 in square i | i <- [1..10]],
+                        assertEqualTestCase __LINE__ [1, 4, 9, 16, 25, 36, 49, 64, 81, 100] $ [square | i <- [1..10], let square = i ^ 2],
+                        assertEqualTestCase __LINE__ [29.983138266217022] $ calcBmis' [(215, 5, 11)],
+                        assertEqualTestCase __LINE__ 100 $ head'' [100..200],
+                        assertEqualTestCase __LINE__ "The list is a longer list." $ describeList [1, 2],
+                        assertEqualTestCase __LINE__ "The list is a longer list." $ describeList' [1, 2],
+                        assertEqualTestCase __LINE__ "The list is a longer list." $ describeList'' [1, 2],
                         {- Recursion -}
-                        assertEqualTestCase 83 $ maximum' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],                                         {- test 40 -}
-                        assertEqualTestCase 83 $ maximum'' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],                                        {- test 41 -}
-                        assertEqualTestCase 83 $ maximum''' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],                                       {- test 42 -}
-                        assertEqualTestCase "xxx" $ replicate' 3 'x',                                                                       {- test 43 -}
-                        assertEqualTestCase "xxx" $ replicate'' 'x' 3,                                                                      {- test 44 -}
-                        assertEqualTestCase [300, 301, 302] $ take' 3 [300..400],                                                           {- test 45 -}
-                        assertEqualTestCase [5, 4, 3, 2, 1] $ reverse' [1..5],                                                              {- test 46 -}
-                        assertEqualTestCase "xxx" $ take' 3 $ repeat 'x',                                                                   {- test 47 -}
-                        assertEqualTestCase [('a', 1), ('b', 2), ('c', 3)] $ zip' "abc" [1, 2, 3],                                          {- test 48 -}
-                        assertEqualTestCase True $ elem' 'x' "abxc",                                                                        {- test 49 -}
-                        assertEqualTestCase [2, 6, 9, 11, 16, 29, 31, 56, 63, 96] $ quicksort [56, 11, 16, 9, 2, 96, 63, 31, 29, 6],        {- test 50 -}
-                        assertEqualTestCase [2, 6, 9, 11, 16, 29, 31, 56, 63, 96] $ mergesort [56, 11, 16, 9, 2, 96, 63, 31, 29, 6],        {- test 51 -}
+                        assertEqualTestCase __LINE__ 83 $ maximum' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],
+                        assertEqualTestCase __LINE__ 83 $ maximum'' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],
+                        assertEqualTestCase __LINE__ 83 $ maximum''' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],
+                        assertEqualTestCase __LINE__ "xxx" $ replicate' 3 'x',
+                        assertEqualTestCase __LINE__ "xxx" $ replicate'' 'x' 3,
+                        assertEqualTestCase __LINE__ [300, 301, 302] $ take' 3 [300..400],
+                        assertEqualTestCase __LINE__ [5, 4, 3, 2, 1] $ reverse' [1..5],
+                        assertEqualTestCase __LINE__ "xxx" $ take' 3 $ repeat 'x',
+                        assertEqualTestCase __LINE__ [('a', 1), ('b', 2), ('c', 3)] $ zip' "abc" [1, 2, 3],
+                        assertEqualTestCase __LINE__ True $ elem' 'x' "abxc",
+                        assertEqualTestCase __LINE__ [2, 6, 9, 11, 16, 29, 31, 56, 63, 96] $ quicksort [56, 11, 16, 9, 2, 96, 63, 31, 29, 6],
+                        assertEqualTestCase __LINE__ [2, 6, 9, 11, 16, 29, 31, 56, 63, 96] $ mergesort [56, 11, 16, 9, 2, 96, 63, 31, 29, 6],
                         {- Higher order functions -}
-                        assertEqualTestCase 2.0 $ divideByTen 20,                                                                           {- test 52 -}
-                        assertEqualTestCase 8 $ applyTwice (*2) 2,                                                                          {- test 53 -}
-                        assertEqualTestCase [10, 10, 10, 10, 10, 10, 10, 10, 10] $ zipWith' (+) [1..9] $ reverse [1..9],                    {- test 54 -}
-                        assertEqualTestCase 2 $ flip' (/) 2 4,                                                                              {- test 55 -}
-                        assertEqualTestCase 2 $ flip'' (/) 2 4,                                                                             {- test 56 -}
-                        assertEqualTestCase [2, 6, 9, 11, 16, 29, 31, 56, 63, 96] $ quicksort' [56, 11, 16, 9, 2, 96, 63, 31, 29, 6],       {- test 57 -}
-                        assertEqualTestCase True True]
+                        assertEqualTestCase __LINE__ 2.0 $ divideByTen 20,
+                        assertEqualTestCase __LINE__ 8 $ applyTwice (*2) 2,
+                        assertEqualTestCase __LINE__ [10, 10, 10, 10, 10, 10, 10, 10, 10] $ zipWith' (+) [1..9] $ reverse [1..9],
+                        assertEqualTestCase __LINE__ 2 $ flip' (/) 2 4,
+                        assertEqualTestCase __LINE__ 2 $ flip'' (/) 2 4,
+                        assertEqualTestCase __LINE__ [2, 6, 9, 11, 16, 29, 31, 56, 63, 96] $ quicksort' [56, 11, 16, 9, 2, 96, 63, 31, 29, 6],
+                        assertEqualTestCase __LINE__ 99554 $ largestDivisible 100000,
+                        {- end -}
+                        assertEqualTestCase __LINE__ True True]
   where
-    assertEqualTestCase :: (Show a, Eq a) => a -> a -> Test
-    assertEqualTestCase x y = TestCase $ assertEqual "" x y
+    assertEqualTestCase :: (Show a, Eq a, Num b) => b -> a -> a -> Test
+    assertEqualTestCase w x y = TestCase $ assertEqual (printf "Line: %s" $ show w) x y
