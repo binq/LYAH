@@ -213,8 +213,8 @@ cylinder r h =
  - hf - height in feet
  - hi - height in inches
  -}
-calcBmis' :: (RealFloat a) => [(a, a, a)] -> [(a, a, a, a)]
-calcBmis' list = [bmi w hf hi | (w, hf, hi) <- list, let bmi = w * 703 / (hf * 12 + hi) ^ 2]
+calcBmis' :: (RealFloat a) => [(a, a, a)] -> [a]
+calcBmis' list = [bmi | (w, hf, hi) <- list, let bmi = w * 703 / (hf * 12 + hi) ^ 2]
 
 head'' :: [a] -> a
 head'' a = case a of
@@ -256,167 +256,162 @@ maximum''' [] = error "empty list"
 maximum''' (head:[]) = head
 maximum''' (head:tail) = max head $ maximum''' tail
 
-{-
-                        assertEqualTestCase 'xxx' $ replicate' 3 'x',
- -}
 replicate' :: (Num a) => a -> b -> [b]
 replicate' 0 _ = []
 replicate' a b = b:replicate' (a - 1) b
 
-{-
-                        assertEqualTestCase 'xxx' $ replicate' 'x' 3,
- -}
 replicate'' :: (Num a) => b -> a -> [b]
 replicate'' _ 0 = []
 replicate'' b a = 
   let replicate_b = replicate'' b
   in (:) b $ replicate_b $ a - 1
 
-{-
-                        assertEqualTestCase [300, 301, 302] $ take' 3 [300..400],
- -}
 take' :: (Ord a, Num a) => a -> [b] -> [b]
 take' _ [] = []
 take' num _
   | num < 1 = []
 take' num (head:rest) = head : take' (num - 1) rest
 
-{-
-                        assertEqualTestCase [5, 4, 3, 2, 1] $ reverse' [1..5],
- -}
 reverse' :: [a] -> [a]
 reverse' [] = []
 reverse' (head:rest) = (reverse' rest) ++ [head]
 
-{-
-                        assertEqualTestCase 'xxx' $ take' 3 $ repeat 'x',
- -}
 repeat' :: a -> [a]
 repeat' a = a : repeat' a
 
-{-
-                        assertEqualTestCase [('a', 1), ('b', 2), ('c', 3)] $ zip' "abc", [1, 2, 3],
- -}
 zip' :: [a] -> [b] -> [(a, b)]
 zip' [] _ = []
 zip' _ [] = []
 zip' (ah:ar) (bh:br) = (ah, bh) : zip' ar br
 
-{-
-                        assertEqualTestCase True $ elem' 'x' "abxc",
- -}
 elem' :: (Eq a) => a -> [a] -> Bool
 elem' _ [] = False
 elem' a (head:rest)
   | a == head = True
   | otherwise = elem' a rest
 
-{-
-                        assertEqualTestCase [2, 6, 9, 11, 16, 29, 31, 56, 63, 96] $ quicksort [56, 11, 16, 9, 2, 96, 63, 31, 29, 6],
- -}
 quicksort :: (Ord a) => [a] -> [a]
 quicksort [] = []
 quicksort (head:rest) = (quicksort [r | r <- rest, r < head]) ++ [head] ++ (quicksort [r | r <- rest, r >= head])
 
-{-
-                        assertEqualTestCase [2, 6, 9, 11, 16, 29, 31, 56, 63, 96] $ mergesort [56, 11, 16, 9, 2, 96, 63, 31, 29, 6],
- -}
-mergesort :: (Ord a) => [a] -> [a]
-mergesort [] = []
-mergesort l@(_:[]) = l
-mergesort l = merge l1 l2
+quicksort' :: (Ord a) => [a] -> [a]
+quicksort' [] = []
+quicksort' (head:rest) = (quicksort top) ++ [head] ++ (quicksort bottom)
   where
-    l1_length = div (length l) 2
-    l1 = mergesort $ take l1_length l
-    l2 = mergesort $ drop l1_length l
-    merge :: (Ord a) => [a] -> [a] -> [a]
-    merge l [] = l
-    merge [] l = l
-    merge x_list@(x:x_tail) y_list@(y:y_tail)
-      | x < y = x:merge x_tail y_list
-      | otherwise = y:merge x_list y_tail
+   (top, bottom) = pivot (< head) rest
+   pivot :: (a -> Bool) -> [a] -> ([a], [a])
+   pivot _pred []    = ([], [])
+   pivot pred (x:xs)
+     | pred x         = insertFst x $ pivot pred xs
+     | otherwise      = insertSnd x $ pivot pred xs
+   insertFst :: a -> ([a], [a]) -> ([a], [a])
+   insertFst i (first, last) = (i:first, last)
+   insertSnd :: a -> ([a], [a]) -> ([a], [a])
+   insertSnd i (first, last) = (first, i:last)
 
-{- Higher order functions -}
+mergesort :: Ord a => [a] -> [a]
+mergesort [] = []
+mergesort xl@(x:[]) = xl
+mergesort list = merge $ conquer $ divide list
+  where
+    merge :: Ord a => ([a], [a]) -> [a]
+    merge (l, []) = l
+    merge ([], l) = l
+    merge (xl@(x:xt), yl@(y:yt))
+      | x < y = x:merge (xt, yl)
+      | otherwise = y:merge (xl, yt)
+    conquer :: Ord a => ([a], [a]) -> ([a], [a])
+    conquer (top, bottom) = (mergesort top, mergesort bottom)
+    divide :: [a] -> ([a], [a])
+    divide [] = ([], [])
+    divide (x:xs)
+      | odd $ length xs = insertFst x $ divide xs
+      | otherwise       = insertSnd x $ divide xs
+    insertFst :: a -> ([a], [a]) -> ([a], [a])
+    insertFst i (first, last) = (i:first, last)
+    insertSnd :: a -> ([a], [a]) -> ([a], [a])
+    insertSnd i (first, last) = (first, i:last)
 
-{-
-                        assertEqualTestCase 2.0 $ divideByTen 20, 
- -}
 divideByTen :: (Floating a) => a -> a
 divideByTen = (/10)
 
-{-
-                        assertEqualTestCase 8 $ applyTwice (*2) 2,
- -}
 applyTwice :: (a -> a) -> a -> a
 applyTwice f a =  f (f a)
 
-{-
-                        assertEqualTestCase [10, 10, 10, 10, 10, 10, 10, 10, 10] $ zipWith' (+) [1..9] [9..1],
- -}
 zipWith' :: (a -> b -> c) -> [a] -> [b] -> [c]
 zipWith' _ [] _ = []
 zipWith' _ _ [] = []
 zipWith' f (xh:xt) (yh:yt) = f xh yh : zipWith' f xt yt
 
-{-
-                        assertEqualTestCase 2 $ flip' (/) 2 4,
- -}
 flip' :: (a -> b -> c) -> (b -> a -> c)
 flip' f = g
   where g x y = f y x
 
-{-
-                        assertEqualTestCase 2 $ flip'' (/) 2 4,
- -}
 flip'' :: (a -> b -> c) -> b -> a -> c
 flip'' f x y = f y x
 
 main = do
-  runTestTT $ TestList [assertEqualTestCase 4 $ doubleMe 2,
-                        assertEqualTestCase 10 $ doubleUs 2 3,
-                        assertEqualTestCase 4 $ doubleSmallNumber 2,
-                        assertEqualTestCase 1000 $ doubleSmallNumber' 1000,
-                        assertEqualTestCase "It's a-me, Conan O'Brien!" $ conanO'Brien,
-                        assertEqualTestCase 6 $ addThree 1 2 3,
-                        assertEqualTestCase 24 $ factorial 4,
-                        assertEqualTestCase 25.1327412 $ circumference 4,
-                        assertEqualTestCase 25.132741228718345 $ circumference' 4,
-                        assertEqualTestCase "Luck number SEVEN!" $ lucky 7,
-                        assertEqualTestCase 24 $ factorial' 4,
-                        assertEqualTestCase "Nine" $ charName '9',
-                        assertEqualTestCase (6, 10) $ addVectors (1, 3) (5, 7),
-                        assertEqualTestCase 2 $ first (2, 4, 6),
-                        assertEqualTestCase 4 $ second (2, 4, 6),
-                        assertEqualTestCase 6 $ third (2, 4, 6),
-                        assertEqualTestCase [4, 7, 6, 8, 11, 4] $ patternMatchInComprehensions [(1,3), (4,3), (2,4), (5, 3), (5,6), (3,1)],
-                        assertEqualTestCase 6 $ head' [6, 2, 3],
-                        assertEqualTestCase "Whiskey" $ nameit 'w',
-                        assertEqualTestCase "Nine" $ nameit (9 :: Integer),
-                        assertEqualTestCase "The list has one element: [1]" $ tell [1],
-                        assertEqualTestCase 3 $ length' [1, 2, 3],
-                        assertEqualTestCase 10 $ sum' [1, 2, 3, 4],
-                        assertEqualTestCase "The first letter of: \"Hello World!\" is 'H'" $ capital "Hello World!",
-                        assertEqualTestCase "You're fat! Lose some weight fatty!" $ bmiTell 27,
-                        assertEqualTestCase "You're fat! Lose some weight fatty!" $ bmiTell' 215 5 11,
-                        assertEqualTestCase 3 $ max' 2 3,
-                        assertEqualTestCase EQ $ myCompare 3 3,
-                        assertEqualTestCase "You're fat! Lose some weight fatty!" $ bmiTell'' 215 5 11,
-                        assertEqualTestCase "V. S." $ initials "Vanson" "Samuel",
-                        assertEqualTestCase [29.983138266217022] $ calcBmis [(215, 5, 11)],
-                        assertEqualTestCase 87.96459430051421 $ cylinder 2 5,
-                        assertEqualTestCase 48 $ 4 * (let x = 9 in x + 1) + 2,
-                        assertEqualTestCase [1, 4, 9, 16, 25, 36, 49, 64, 81, 100] $ [let square x = x^2 in square i | i <- [1..10]],
-                        assertEqualTestCase [1, 4, 9, 16, 25, 36, 49, 64, 81, 100] $ [square | i <- [1..10], let square = i ^ 2],
-                        assertEqualTestCase [29.983138266217022] $ calcBmis' [(215, 5, 11)],
-                        assertEqualTestCase 100 $ head'' [100..200],
-                        assertEqualTestCase "a longer list." $ describeList [1, 2],
-                        assertEqualTestCase "a longer list." $ describeList' [1, 2],
-                        assertEqualTestCase "a longer list." $ describeList'' [1, 2],
+  runTestTT $ TestList [assertEqualTestCase 4 $ doubleMe 2,                                                                                 {- test 0 -}
+                        assertEqualTestCase 10 $ doubleUs 2 3,                                                                              {- test 1 -}
+                        assertEqualTestCase 4 $ doubleSmallNumber 2,                                                                        {- test 2 -}
+                        assertEqualTestCase 1000 $ doubleSmallNumber' 1000,                                                                 {- test 3 -}
+                        assertEqualTestCase "It's a-me, Conan O'Brien!" $ conanO'Brien,                                                     {- test 4 -}
+                        assertEqualTestCase 6 $ addThree 1 2 3,                                                                             {- test 5 -}
+                        assertEqualTestCase 24 $ factorial 4,                                                                               {- test 6 -}
+                        assertEqualTestCase 25.1327412 $ circumference 4,                                                                   {- test 7 -}
+                        assertEqualTestCase 25.132741228718345 $ circumference' 4,                                                          {- test 8 -}
+                        assertEqualTestCase "Luck number SEVEN!" $ lucky 7,                                                                 {- test 9 -}
+                        assertEqualTestCase 24 $ factorial' 4,                                                                              {- test 10 -}
+                        assertEqualTestCase "Nine" $ charName '9',                                                                          {- test 11 -}
+                        assertEqualTestCase (6, 10) $ addVectors (1, 3) (5, 7),                                                             {- test 12 -}
+                        assertEqualTestCase 2 $ first (2, 4, 6),                                                                            {- test 13 -}
+                        assertEqualTestCase 4 $ second (2, 4, 6),                                                                           {- test 14 -}
+                        assertEqualTestCase 6 $ third (2, 4, 6),                                                                            {- test 15 -}
+                        assertEqualTestCase [4, 7, 6, 8, 11, 4] $ patternMatchInComprehensions [(1,3), (4,3), (2,4), (5, 3), (5,6), (3,1)], {- test 16 -}
+                        assertEqualTestCase 6 $ head' [6, 2, 3],                                                                            {- test 17 -}
+                        assertEqualTestCase "Whiskey" $ nameit 'w',                                                                         {- test 18 -}
+                        assertEqualTestCase "Nine" $ nameit (9 :: Integer),                                                                 {- test 19 -}
+                        assertEqualTestCase "The list has one element: [1]" $ tell [1],                                                     {- test 20 -}
+                        assertEqualTestCase 3 $ length' [1, 2, 3],                                                                          {- test 21 -}
+                        assertEqualTestCase 10 $ sum' [1, 2, 3, 4],                                                                         {- test 22 -}
+                        assertEqualTestCase "The first letter of: \"Hello World!\" is 'H'" $ capital "Hello World!",                        {- test 23 -}
+                        assertEqualTestCase "You're fat! Lose some weight fatty!" $ bmiTell 27,                                             {- test 24 -}
+                        assertEqualTestCase "You're fat! Lose some weight fatty!" $ bmiTell' 215 5 11,                                      {- test 25 -}
+                        assertEqualTestCase 3 $ max' 2 3,                                                                                   {- test 26 -}
+                        assertEqualTestCase EQ $ myCompare 3 3,                                                                             {- test 27 -}
+                        assertEqualTestCase "You're fat! Lose some weight fatty!" $ bmiTell'' 215 5 11,                                     {- test 28 -}
+                        assertEqualTestCase "V. S." $ initials "Vanson" "Samuel",                                                           {- test 29 -}
+                        assertEqualTestCase [29.983138266217022] $ calcBmis [(215, 5, 11)],                                                 {- test 30 -}
+                        assertEqualTestCase 87.96459430051421 $ cylinder 2 5,                                                               {- test 31 -}
+                        assertEqualTestCase 42 $ 4 * (let x = 9 in x + 1) + 2,                                                              {- test 32 -}
+                        assertEqualTestCase [1, 4, 9, 16, 25, 36, 49, 64, 81, 100] $ [let square x = x^2 in square i | i <- [1..10]],       {- test 33 -}
+                        assertEqualTestCase [1, 4, 9, 16, 25, 36, 49, 64, 81, 100] $ [square | i <- [1..10], let square = i ^ 2],           {- test 34 -}
+                        assertEqualTestCase [29.983138266217022] $ calcBmis' [(215, 5, 11)],                                                {- test 35 -}
+                        assertEqualTestCase 100 $ head'' [100..200],                                                                        {- test 36 -}
+                        assertEqualTestCase "The list is a longer list." $ describeList [1, 2],                                             {- test 37 -}
+                        assertEqualTestCase "The list is a longer list." $ describeList' [1, 2],                                            {- test 38 -}
+                        assertEqualTestCase "The list is a longer list." $ describeList'' [1, 2],                                           {- test 39 -}
                         {- Recursion -}
-                        assertEqualTestCase 83 $ maximum' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],
-                        assertEqualTestCase 83 $ maximum'' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],
-                        assertEqualTestCase 83 $ maximum''' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],
-                        ]
+                        assertEqualTestCase 83 $ maximum' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],                                         {- test 40 -}
+                        assertEqualTestCase 83 $ maximum'' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],                                        {- test 41 -}
+                        assertEqualTestCase 83 $ maximum''' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],                                       {- test 42 -}
+                        assertEqualTestCase "xxx" $ replicate' 3 'x',                                                                       {- test 43 -}
+                        assertEqualTestCase "xxx" $ replicate'' 'x' 3,                                                                      {- test 44 -}
+                        assertEqualTestCase [300, 301, 302] $ take' 3 [300..400],                                                           {- test 45 -}
+                        assertEqualTestCase [5, 4, 3, 2, 1] $ reverse' [1..5],                                                              {- test 46 -}
+                        assertEqualTestCase "xxx" $ take' 3 $ repeat 'x',                                                                   {- test 47 -}
+                        assertEqualTestCase [('a', 1), ('b', 2), ('c', 3)] $ zip' "abc" [1, 2, 3],                                          {- test 48 -}
+                        assertEqualTestCase True $ elem' 'x' "abxc",                                                                        {- test 49 -}
+                        assertEqualTestCase [2, 6, 9, 11, 16, 29, 31, 56, 63, 96] $ quicksort [56, 11, 16, 9, 2, 96, 63, 31, 29, 6],        {- test 50 -}
+                        assertEqualTestCase [2, 6, 9, 11, 16, 29, 31, 56, 63, 96] $ mergesort [56, 11, 16, 9, 2, 96, 63, 31, 29, 6],        {- test 51 -}
+                        {- Higher order functions -}
+                        assertEqualTestCase 2.0 $ divideByTen 20,                                                                           {- test 52 -}
+                        assertEqualTestCase 8 $ applyTwice (*2) 2,                                                                          {- test 53 -}
+                        assertEqualTestCase [10, 10, 10, 10, 10, 10, 10, 10, 10] $ zipWith' (+) [1..9] $ reverse [1..9],                    {- test 54 -}
+                        assertEqualTestCase 2 $ flip' (/) 2 4,                                                                              {- test 55 -}
+                        assertEqualTestCase 2 $ flip'' (/) 2 4,                                                                             {- test 56 -}
+                        assertEqualTestCase [2, 6, 9, 11, 16, 29, 31, 56, 63, 96] $ quicksort' [56, 11, 16, 9, 2, 96, 63, 31, 29, 6],       {- test 57 -}
+                        assertEqualTestCase True True]
   where
     assertEqualTestCase :: (Show a, Eq a) => a -> a -> Test
     assertEqualTestCase x y = TestCase $ assertEqual "" x y
