@@ -3,6 +3,10 @@
 import Test.HUnit
 import Text.Printf
 
+import Data.Function
+import qualified Data.List as DL
+import qualified Data.Map as DM
+
 doubleMe x = x + x
 
 doubleUs x y = doubleMe x + doubleMe y
@@ -24,7 +28,7 @@ circumference :: Float -> Float
 circumference r = 2 * pi * r
 
 circumference' :: Double -> Double
-circumference' r = 2 * pi * r
+circumference' = (*) $ 2 * pi
 
 lucky :: (Integral a) => a -> String
 lucky 7 = "Luck number SEVEN!"
@@ -90,9 +94,9 @@ third (_, _, c) = c
 
 patternMatchInComprehensions x = [a+b | (a, b) <- x]
 
-head' :: [a] -> a
-head' [] = error "empty list"
-head' (x:_) = x
+-- head' :: [a] -> a
+-- head' [] = error "empty list"
+-- head' (x:_) = x
 
 class Nameable a where
   nameit :: a -> String
@@ -149,9 +153,12 @@ length' :: (Num t) => [a] -> t
 length' [] = 0
 length' (_:xs) = 1 + length' xs
 
-sum' :: (Num a) => [a] -> a
-sum' [] = 0
-sum' (a:b) = a + sum' b
+-- sum' :: (Num a) => [a] -> a
+-- sum' [] = 0
+-- sum' (a:b) = a + sum' b
+
+sum' :: (Num a) => [a] ->  a
+sum' = foldl1 (+)
 
 capital :: String -> String
 capital "" = "Empty string, whoops!"
@@ -164,12 +171,12 @@ bmiTell bmi
   | bmi <= 30.0 = "You're fat! Lose some weight fatty!"
   | otherwise = "You're a whale, congratulations!"
 
-bmiTell' :: (RealFloat a) => a -> a -> a -> String
-bmiTell' weight height_feet height_inches
-  | weight * 703 / (height_feet * 12 + height_inches) ^ 2 <= 18.5 = "You're underweight, you emo, you!"
-  | weight * 703 / (height_feet * 12 + height_inches) ^ 2 <= 25.0 = "You're supposedly normal. Pfft, I bet you're ugly!"
-  | weight * 703 / (height_feet * 12 + height_inches) ^ 2 <= 30.0 = "You're fat! Lose some weight fatty!"
-  | otherwise = "You're a whale, congratulations!"
+-- bmiTell' :: (RealFloat a) => a -> a -> a -> String
+-- bmiTell' weight height_feet height_inches
+--   | weight * 703 / (height_feet * 12 + height_inches) ^ 2 <= 18.5 = "You're underweight, you emo, you!"
+--   | weight * 703 / (height_feet * 12 + height_inches) ^ 2 <= 25.0 = "You're supposedly normal. Pfft, I bet you're ugly!"
+--   | weight * 703 / (height_feet * 12 + height_inches) ^ 2 <= 30.0 = "You're fat! Lose some weight fatty!"
+--   | otherwise = "You're a whale, congratulations!"
 
 max' :: (Ord a) => a -> a -> a
 max' a b
@@ -182,8 +189,8 @@ myCompare a b
   | a == b = EQ
   | a < b = LT
 
-bmiTell'' :: (RealFloat a) => a -> a -> a -> String
-bmiTell'' weight height_feet height_inches
+bmiTell' :: (RealFloat a) => a -> a -> a -> String
+bmiTell' weight height_feet height_inches
   | bmi <= skinny = "You're underweight, you emo, you!"
   | bmi <= normal = "You're supposedly normal. Pfft, I bet you're ugly!"
   | bmi <= fat = "You're fat! Lose some weight fatty!"
@@ -218,55 +225,58 @@ cylinder r h =
 calcBmis' :: (RealFloat a) => [(a, a, a)] -> [a]
 calcBmis' list = [bmi | (w, hf, hi) <- list, let bmi = w * 703 / (hf * 12 + hi) ^ 2]
 
-head'' :: [a] -> a
-head'' a = case a of
-           [] -> error "empty list"
-           (x:_) -> x
+-- head' :: [a] -> a
+-- head' a = case a of
+--             [] -> error "empty list"
+--             (x:_) -> x
+
+-- describeList :: [a] -> String
+-- describeList xs = "The list is " ++ case xs of
+--                   [] -> "empty."
+--                   _:[] -> "a singleton list."
+--                   xs -> "a longer list."
+
+-- describeList :: [a] -> String
+-- describeList xs = "The list is " ++ a
+--   where a = case xs of
+--                 [] -> "empty."
+--                 _:[] -> "a singleton list."
+--                 xs -> "a longer list."
+
 
 describeList :: [a] -> String
-describeList xs = "The list is " ++ case xs of
-                  [] -> "empty."
-                  _:[] -> "a singleton list."
-                  xs -> "a longer list."
-
-describeList' xs = "The list is " ++ a
-  where a = case xs of
-                [] -> "empty."
-                _:[] -> "a singleton list."
-                xs -> "a longer list."
-
-describeList'' xs = "The list is " ++ what xs
+describeList xs = "The list is " ++ what xs
   where what [] = "empty."
         what (_:[]) = "a singleton list."
         what (_:_) = "a longer list."
 
-maximum' :: (Ord a) => [a] -> a
-maximum' [] = error "empty list"
-maximum' (head:[]) = head
-maximum' (head:tail) = if head > maximum' tail then head else maximum' tail
+-- maximum' :: (Ord a) => [a] -> a
+-- maximum' [] = error "empty list"
+-- maximum' (head:[]) = head
+-- maximum' (head:tail) = if head > maximum' tail then head else maximum' tail
 
-maximum'' :: (Ord a) => [a] -> a
-maximum'' [] = error "empty list"
-maximum'' (head:[]) = head
-maximum'' (head:tail)
-  | head > maxTail = head
-  | otherwise = maxTail
-  where maxTail = maximum'' tail
+-- maximum' :: (Ord a) => [a] -> a
+-- maximum' [] = error "empty list"
+-- maximum' (head:[]) = head
+-- maximum' (head:tail)
+--   | head > maxTail = head
+--   | otherwise = maxTail
+--   where maxTail = maximum' tail
 
-maximum''' :: (Ord a) => [a] -> a
-maximum''' [] = error "empty list"
-maximum''' (head:[]) = head
-maximum''' (head:tail) = max head $ maximum''' tail
+-- maximum' :: (Ord a) => [a] -> a
+-- maximum' [] = error "empty list"
+-- maximum' (head:[]) = head
+-- maximum' (head:tail) = max head $ maximum' tail
+
+-- replicate' :: (Num a) => a -> b -> [b]
+-- replicate' 0 _ = []
+-- replicate' a b = b:replicate' (a - 1) b
 
 replicate' :: (Num a) => a -> b -> [b]
 replicate' 0 _ = []
-replicate' a b = b:replicate' (a - 1) b
-
-replicate'' :: (Num a) => b -> a -> [b]
-replicate'' _ 0 = []
-replicate'' b a = 
-  let replicate_b = replicate'' b
-  in (:) b $ replicate_b $ a - 1
+replicate' a b = b : (r $ a - 1)
+  where
+    r = flip replicate' b
 
 take' :: (Ord a, Num a) => a -> [b] -> [b]
 take' _ [] = []
@@ -274,9 +284,9 @@ take' num _
   | num < 1 = []
 take' num (head:rest) = head : take' (num - 1) rest
 
-reverse' :: [a] -> [a]
-reverse' [] = []
-reverse' (head:rest) = (reverse' rest) ++ [head]
+-- reverse' :: [a] -> [a]
+-- reverse' [] = []
+-- reverse' (head:rest) = (reverse' rest) ++ [head]
 
 repeat' :: a -> [a]
 repeat' a = a : repeat' a
@@ -286,30 +296,33 @@ zip' [] _ = []
 zip' _ [] = []
 zip' (ah:ar) (bh:br) = (ah, bh) : zip' ar br
 
+-- elem' :: (Eq a) => a -> [a] -> Bool
+-- elem' _ [] = False
+-- elem' a (head:rest)
+--   | a == head = True
+--   | otherwise = elem' a rest
+
 elem' :: (Eq a) => a -> [a] -> Bool
-elem' _ [] = False
-elem' a (head:rest)
-  | a == head = True
-  | otherwise = elem' a rest
+elem' x = foldl (\r i -> if r == True then r else i == x) False
+
+-- quicksort :: (Ord a) => [a] -> [a]
+-- quicksort [] = []
+-- quicksort (head:rest) = (quicksort [r | r <- rest, r < head]) ++ [head] ++ (quicksort [r | r <- rest, r >= head])
 
 quicksort :: (Ord a) => [a] -> [a]
 quicksort [] = []
-quicksort (head:rest) = (quicksort [r | r <- rest, r < head]) ++ [head] ++ (quicksort [r | r <- rest, r >= head])
-
-quicksort' :: (Ord a) => [a] -> [a]
-quicksort' [] = []
-quicksort' (head:rest) = (quicksort top) ++ [head] ++ (quicksort bottom)
+quicksort (head:rest) = (quicksort top) ++ [head] ++ (quicksort bottom)
   where
-   (top, bottom) = pivot (< head) rest
-   pivot :: (a -> Bool) -> [a] -> ([a], [a])
-   pivot _pred []    = ([], [])
-   pivot pred (x:xs)
-     | pred x         = insertFst x $ pivot pred xs
-     | otherwise      = insertSnd x $ pivot pred xs
-   insertFst :: a -> ([a], [a]) -> ([a], [a])
-   insertFst i (first, last) = (i:first, last)
-   insertSnd :: a -> ([a], [a]) -> ([a], [a])
-   insertSnd i (first, last) = (first, i:last)
+    (top, bottom) = pivot (< head) rest
+    pivot :: (a -> Bool) -> [a] -> ([a], [a])
+    pivot _pred []     = ([], [])
+    pivot pred (x:xs)
+      | pred x         = insertFst x $ pivot pred xs
+      | otherwise      = insertSnd x $ pivot pred xs
+    insertFst :: a -> ([a], [a]) -> ([a], [a])
+    insertFst i (first, last) = (i:first, last)
+    insertSnd :: a -> ([a], [a]) -> ([a], [a])
+    insertSnd i (first, last) = (first, i:last)
 
 mergesort :: Ord a => [a] -> [a]
 mergesort [] = []
@@ -345,15 +358,49 @@ zipWith' _ [] _ = []
 zipWith' _ _ [] = []
 zipWith' f (xh:xt) (yh:yt) = f xh yh : zipWith' f xt yt
 
-flip' :: (a -> b -> c) -> (b -> a -> c)
-flip' f = g
-  where g x y = f y x
+-- flip' :: (a -> b -> c) -> (b -> a -> c)
+-- flip' f = g
+--   where g x y = f y x
 
-flip'' :: (a -> b -> c) -> b -> a -> c
-flip'' f x y = f y x
+flip' :: (a -> b -> c) -> b -> a -> c
+flip' f = \x y -> f y x
 
 largestDivisible :: (Enum a, Num a, Integral a) => a -> a
-largestDivisible max = head $ filter (\a -> mod a 3829 == 0) $ [max, max-1..]
+largestDivisible max = head $ filter ((==) 0 . flip mod 3829) [max, max-1..]
+
+chainQuery :: (Enum a, Integral a, Num b, Ord b, Num c) => a -> b -> c
+chainQuery n min = fromIntegral . length . filter (> min) . map (fromIntegral . length . chain) $ [1..n]
+  where
+    chain :: (Integral a) => a -> [a]
+    chain n
+      | n < 1 = undefined
+      | n == 1 = [n]
+      | even n = n:(chain $ div n 2)
+      | otherwise = n:(chain $ n * 3 + 1)
+
+map' :: (a -> b) -> [a] -> [b]
+map' f = foldr (\i r -> f i:r) []
+maximum' :: (Ord a) => [a] -> a
+maximum' = foldr1 (\i r -> if i > r then i else r)
+reverse' :: [a] -> [a]
+reverse' = foldl (flip (:)) []
+product' :: (Num a) => [a] -> a
+product' = foldl1 (*)
+filter' :: (a -> Bool) -> [a] -> [a]
+filter' f = foldr (\i r -> if f i then i:r else r) []
+head' :: [a] -> a
+head' = foldr1 (\i _r -> i)
+last' :: [a] -> a
+last' = foldl1 (\_r i -> i)
+
+squareRootQuery :: (Ord a, Enum a, Num a, Floating a) => a -> a
+squareRootQuery num = (+) 1 . fromIntegral . length . takeWhile (<num) . scanl1 (+) . map sqrt $ [1..]
+
+ensureNegative :: (Num a) => [a] -> [a]
+ensureNegative = map (negate . abs)
+
+numUniques :: (Eq a, Num b) => [a] -> b
+numUniques x = DL.genericLength . DL.nub $ x
 
 main = do
   runTestTT $ TestList [assertEqualTestCase __LINE__ 4 $ doubleMe 2,
@@ -384,7 +431,6 @@ main = do
                         assertEqualTestCase __LINE__ "You're fat! Lose some weight fatty!" $ bmiTell' 215 5 11,
                         assertEqualTestCase __LINE__ 3 $ max' 2 3,
                         assertEqualTestCase __LINE__ EQ $ myCompare 3 3,
-                        assertEqualTestCase __LINE__ "You're fat! Lose some weight fatty!" $ bmiTell'' 215 5 11,
                         assertEqualTestCase __LINE__ "V. S." $ initials "Vanson" "Samuel",
                         assertEqualTestCase __LINE__ [29.983138266217022] $ calcBmis [(215, 5, 11)],
                         assertEqualTestCase __LINE__ 87.96459430051421 $ cylinder 2 5,
@@ -392,16 +438,10 @@ main = do
                         assertEqualTestCase __LINE__ [1, 4, 9, 16, 25, 36, 49, 64, 81, 100] $ [let square x = x^2 in square i | i <- [1..10]],
                         assertEqualTestCase __LINE__ [1, 4, 9, 16, 25, 36, 49, 64, 81, 100] $ [square | i <- [1..10], let square = i ^ 2],
                         assertEqualTestCase __LINE__ [29.983138266217022] $ calcBmis' [(215, 5, 11)],
-                        assertEqualTestCase __LINE__ 100 $ head'' [100..200],
                         assertEqualTestCase __LINE__ "The list is a longer list." $ describeList [1, 2],
-                        assertEqualTestCase __LINE__ "The list is a longer list." $ describeList' [1, 2],
-                        assertEqualTestCase __LINE__ "The list is a longer list." $ describeList'' [1, 2],
                         {- Recursion -}
                         assertEqualTestCase __LINE__ 83 $ maximum' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],
-                        assertEqualTestCase __LINE__ 83 $ maximum'' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],
-                        assertEqualTestCase __LINE__ 83 $ maximum''' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],
                         assertEqualTestCase __LINE__ "xxx" $ replicate' 3 'x',
-                        assertEqualTestCase __LINE__ "xxx" $ replicate'' 'x' 3,
                         assertEqualTestCase __LINE__ [300, 301, 302] $ take' 3 [300..400],
                         assertEqualTestCase __LINE__ [5, 4, 3, 2, 1] $ reverse' [1..5],
                         assertEqualTestCase __LINE__ "xxx" $ take' 3 $ repeat 'x',
@@ -414,9 +454,14 @@ main = do
                         assertEqualTestCase __LINE__ 8 $ applyTwice (*2) 2,
                         assertEqualTestCase __LINE__ [10, 10, 10, 10, 10, 10, 10, 10, 10] $ zipWith' (+) [1..9] $ reverse [1..9],
                         assertEqualTestCase __LINE__ 2 $ flip' (/) 2 4,
-                        assertEqualTestCase __LINE__ 2 $ flip'' (/) 2 4,
-                        assertEqualTestCase __LINE__ [2, 6, 9, 11, 16, 29, 31, 56, 63, 96] $ quicksort' [56, 11, 16, 9, 2, 96, 63, 31, 29, 6],
                         assertEqualTestCase __LINE__ 99554 $ largestDivisible 100000,
+                        assertEqualTestCase __LINE__ 66 $ chainQuery 100 15,
+                        assertEqualTestCase __LINE__ [2, 3, 4] $ map' (\a -> a + 1) [1, 2, 3],
+                        assertEqualTestCase __LINE__ [3, 2, 1] $ reverse' [1, 2, 3],
+                        assertEqualTestCase __LINE__ 131 $ squareRootQuery 1000,
+                        assertEqualTestCase __LINE__ [-1, -2, -3] $ ensureNegative [-1, 2, -3],
+                        {- Modules -}
+                        assertEqualTestCase __LINE__ 8 $ numUniques "hello world",
                         {- end -}
                         assertEqualTestCase __LINE__ True True]
   where
