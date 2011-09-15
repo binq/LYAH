@@ -733,7 +733,7 @@ todo = getArgs >>= dispatch >>= putStrLn
         view = show
         remove = show
         replace = show
-        dispatch (action:args) = return (maybe "" ($ args) (route action))
+        dispatch (action:args) = return $ maybe "" ($ args) (route action)
         routes = [("add", add), ("view", view), ("remove", remove), ("replace", replace)]
         route action = lookup action routes
         
