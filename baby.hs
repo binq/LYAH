@@ -1,11 +1,17 @@
-{-# LANGUAGE CPP #-}
+module Baby where
 
-import Test.HUnit
-import Text.Printf
-
-import Data.Function
-import qualified Data.List as DL
-import qualified Data.Map as DM
+import System.Console.ANSI (setCursorPosition, clearScreen)
+import Text.Printf (PrintfArg (..), printf)
+import Control.Monad (when, forever, forM, liftM)
+import Control.Applicative (ZipList (..), (<$>), (<*>))
+import Data.Function (fix)
+import Data.Char (chr, ord, toUpper, toLower)
+import Data.List (nub, intersperse, genericLength)
+import System.IO (IOMode (..), stdout, openFile, withFile, hGetContents, hClose, openTempFile, hPutStr, hFlush)
+import System.Directory (renameFile)
+import Data.Map (Map (..))
+import qualified Data.Map as Map (fromList, lookup)
+import System.Environment (getArgs, getProgName)
 
 doubleMe x = x + x
 
@@ -288,8 +294,11 @@ take' num (head:rest) = head : take' (num - 1) rest
 -- reverse' [] = []
 -- reverse' (head:rest) = (reverse' rest) ++ [head]
 
+-- repeat' :: a -> [a]
+-- repeat' a = a : repeat' a
+
 repeat' :: a -> [a]
-repeat' a = a : repeat' a
+repeat' = fix . (:)
 
 zip' :: [a] -> [b] -> [(a, b)]
 zip' [] _ = []
@@ -400,70 +409,331 @@ ensureNegative :: (Num a) => [a] -> [a]
 ensureNegative = map (negate . abs)
 
 numUniques :: (Eq a, Num b) => [a] -> b
-numUniques x = DL.genericLength . DL.nub $ x
+numUniques = genericLength . nub
 
-main = do
-  runTestTT $ TestList [assertEqualTestCase __LINE__ 4 $ doubleMe 2,
-                        assertEqualTestCase __LINE__ 10 $ doubleUs 2 3,
-                        assertEqualTestCase __LINE__ 4 $ doubleSmallNumber 2,
-                        assertEqualTestCase __LINE__ 1000 $ doubleSmallNumber' 1000,
-                        assertEqualTestCase __LINE__ "It's a-me, Conan O'Brien!" $ conanO'Brien,
-                        assertEqualTestCase __LINE__ 6 $ addThree 1 2 3,
-                        assertEqualTestCase __LINE__ 24 $ factorial 4,
-                        assertEqualTestCase __LINE__ 25.1327412 $ circumference 4,
-                        assertEqualTestCase __LINE__ 25.132741228718345 $ circumference' 4,
-                        assertEqualTestCase __LINE__ "Luck number SEVEN!" $ lucky 7,
-                        assertEqualTestCase __LINE__ 24 $ factorial' 4,
-                        assertEqualTestCase __LINE__ "Nine" $ charName '9',
-                        assertEqualTestCase __LINE__ (6, 10) $ addVectors (1, 3) (5, 7),
-                        assertEqualTestCase __LINE__ 2 $ first (2, 4, 6),
-                        assertEqualTestCase __LINE__ 4 $ second (2, 4, 6),
-                        assertEqualTestCase __LINE__ 6 $ third (2, 4, 6),
-                        assertEqualTestCase __LINE__ [4, 7, 6, 8, 11, 4] $ patternMatchInComprehensions [(1,3), (4,3), (2,4), (5, 3), (5,6), (3,1)],
-                        assertEqualTestCase __LINE__ 6 $ head' [6, 2, 3],
-                        assertEqualTestCase __LINE__ "Whiskey" $ nameit 'w',
-                        assertEqualTestCase __LINE__ "Nine" $ nameit (9 :: Integer),
-                        assertEqualTestCase __LINE__ "The list has one element: [1]" $ tell [1],
-                        assertEqualTestCase __LINE__ 3 $ length' [1, 2, 3],
-                        assertEqualTestCase __LINE__ 10 $ sum' [1, 2, 3, 4],
-                        assertEqualTestCase __LINE__ "The first letter of: \"Hello World!\" is 'H'" $ capital "Hello World!",
-                        assertEqualTestCase __LINE__ "You're fat! Lose some weight fatty!" $ bmiTell 27,
-                        assertEqualTestCase __LINE__ "You're fat! Lose some weight fatty!" $ bmiTell' 215 5 11,
-                        assertEqualTestCase __LINE__ 3 $ max' 2 3,
-                        assertEqualTestCase __LINE__ EQ $ myCompare 3 3,
-                        assertEqualTestCase __LINE__ "V. S." $ initials "Vanson" "Samuel",
-                        assertEqualTestCase __LINE__ [29.983138266217022] $ calcBmis [(215, 5, 11)],
-                        assertEqualTestCase __LINE__ 87.96459430051421 $ cylinder 2 5,
-                        assertEqualTestCase __LINE__ 42 $ 4 * (let x = 9 in x + 1) + 2,
-                        assertEqualTestCase __LINE__ [1, 4, 9, 16, 25, 36, 49, 64, 81, 100] $ [let square x = x^2 in square i | i <- [1..10]],
-                        assertEqualTestCase __LINE__ [1, 4, 9, 16, 25, 36, 49, 64, 81, 100] $ [square | i <- [1..10], let square = i ^ 2],
-                        assertEqualTestCase __LINE__ [29.983138266217022] $ calcBmis' [(215, 5, 11)],
-                        assertEqualTestCase __LINE__ "The list is a longer list." $ describeList [1, 2],
-                        {- Recursion -}
-                        assertEqualTestCase __LINE__ 83 $ maximum' [45, 12, 11, 18, 27, 20, 82, 83, 26, 82],
-                        assertEqualTestCase __LINE__ "xxx" $ replicate' 3 'x',
-                        assertEqualTestCase __LINE__ [300, 301, 302] $ take' 3 [300..400],
-                        assertEqualTestCase __LINE__ [5, 4, 3, 2, 1] $ reverse' [1..5],
-                        assertEqualTestCase __LINE__ "xxx" $ take' 3 $ repeat 'x',
-                        assertEqualTestCase __LINE__ [('a', 1), ('b', 2), ('c', 3)] $ zip' "abc" [1, 2, 3],
-                        assertEqualTestCase __LINE__ True $ elem' 'x' "abxc",
-                        assertEqualTestCase __LINE__ [2, 6, 9, 11, 16, 29, 31, 56, 63, 96] $ quicksort [56, 11, 16, 9, 2, 96, 63, 31, 29, 6],
-                        assertEqualTestCase __LINE__ [2, 6, 9, 11, 16, 29, 31, 56, 63, 96] $ mergesort [56, 11, 16, 9, 2, 96, 63, 31, 29, 6],
-                        {- Higher order functions -}
-                        assertEqualTestCase __LINE__ 2.0 $ divideByTen 20,
-                        assertEqualTestCase __LINE__ 8 $ applyTwice (*2) 2,
-                        assertEqualTestCase __LINE__ [10, 10, 10, 10, 10, 10, 10, 10, 10] $ zipWith' (+) [1..9] $ reverse [1..9],
-                        assertEqualTestCase __LINE__ 2 $ flip' (/) 2 4,
-                        assertEqualTestCase __LINE__ 99554 $ largestDivisible 100000,
-                        assertEqualTestCase __LINE__ 66 $ chainQuery 100 15,
-                        assertEqualTestCase __LINE__ [2, 3, 4] $ map' (\a -> a + 1) [1, 2, 3],
-                        assertEqualTestCase __LINE__ [3, 2, 1] $ reverse' [1, 2, 3],
-                        assertEqualTestCase __LINE__ 131 $ squareRootQuery 1000,
-                        assertEqualTestCase __LINE__ [-1, -2, -3] $ ensureNegative [-1, 2, -3],
-                        {- Modules -}
-                        assertEqualTestCase __LINE__ 8 $ numUniques "hello world",
-                        {- end -}
-                        assertEqualTestCase __LINE__ True True]
+encode :: Int -> [Char] -> [Char]
+encode i = map (chr . (+i) . ord)
+
+decode :: Int -> [Char] -> [Char]
+decode = encode . negate
+
+-- findKey :: (Ord k) => k -> [(k,v)] -> Maybe v
+-- findKey first_name = fmap snd . DL.find (\(k,_) -> first_name == k)
+
+-- findKey :: (Ord k) => k -> [(k,v)] -> Maybe v
+-- findKey first_name = (snd <$>) . DL.find (\(k,_) -> first_name == k)
+
+findKey :: (Ord k) => k -> [(k,v)] -> Maybe v
+findKey first_name = Map.lookup first_name . Map.fromList
+
+data Point = Point Float Float deriving (Show, Eq)
+data Shape = Circle Point Float | Rectangle Point Point deriving (Show, Eq)
+
+surface :: Shape -> Float
+surface (Circle _ radius) = pi * radius ^ 2
+surface (Rectangle (Point t l) (Point b r)) = (abs $ b - t) * (abs $ r - l)
+
+nudge :: Shape -> Float -> Float -> Shape
+nudge (Circle (Point x1 y1) r) x y = Circle (Point new_x new_y) r
   where
-    assertEqualTestCase :: (Show a, Eq a, Num b) => b -> a -> a -> Test
-    assertEqualTestCase w x y = TestCase $ assertEqual (printf "Line: %s" $ show w) x y
+   new_x = x1+x
+   new_y = y1+y
+nudge (Rectangle (Point x1 y1) (Point x2 y2)) x y = Rectangle (Point t l) (Point b r)
+  where 
+    t = x1+x
+    l = y1+y
+    b = x2+x
+    r = y2+y
+
+baseCircle :: Float -> Shape
+baseCircle = Circle (Point 0 0)
+
+baseRect :: Float -> Float -> Shape
+baseRect width height = Rectangle (Point 0 0) (Point width height)
+
+data Person = Person {firstName :: String, lastName :: String, age :: Int, height :: Float, phoneNumber :: String, flavor :: String} deriving (Show)
+
+data Car a b c = Car {company :: a, model :: b, year :: c} deriving (Show)
+
+tellCar :: (Show a) => Car String String a -> String
+tellCar (Car {company=company, model=model, year=year}) = printf "This %s %s was made in %s" company model (show year)
+
+data Vector a = Vector a a a deriving (Show, Eq)
+
+vplus :: (Num a) => Vector a -> Vector a -> Vector a
+vplus (Vector ai aj ak) (Vector bi bj bk) = Vector (ai+bi) (aj+bj) (ak+bk)
+
+vectMult :: (Num t) => Vector t -> t -> Vector t  
+vectMult (Vector vi vj vk) x = Vector (vi*x) (vj*x) (vk*x)
+
+scalarMult :: (Num t) => Vector t -> Vector t -> t  
+scalarMult (Vector ai aj ak) (Vector bi bj bk) = ai*bi+aj*bj+ak*bk
+
+type Dictionary x y = [(x, y)]
+type ContactName = String
+type PhoneNumber = String
+type Phonebook = Dictionary ContactName PhoneNumber
+
+phonebookLookup :: ContactName -> Phonebook -> Maybe PhoneNumber
+phonebookLookup = findKey
+
+inPhoneBook :: ContactName -> PhoneNumber -> Phonebook -> Bool
+inPhoneBook contactname phonenumber phonebook = maybe False (const True) $ phonebookLookup contactname phonebook
+
+data LockerState = Taken | Free deriving (Show, Eq)  
+type Code = String  
+type LockerMap a = Map a (LockerState, Code)
+
+lockerLookup :: (Ord a, PrintfArg a) => a -> LockerMap a -> Either String Code
+lockerLookup lockerNumber lockers = results . Map.lookup lockerNumber $ lockers
+  where
+    results :: Maybe (LockerState, Code) -> Either String Code
+    results Nothing = Left $ printf "Locker number %u doesn't exist!" lockerNumber
+    results (Just (state, code))
+      | state == Taken = Left $ printf "Locker %u is already taken!" lockerNumber
+      | otherwise = Right code
+
+lockers = Map.fromList [(100,(Taken,"ZD39I")), (101,(Free,"JAH3I")), (103,(Free,"IQSA9")), (105,(Free,"QOTSA")), (109,(Taken,"893JJ")), (110,(Taken,"99292"))]
+
+infixr 5 :-:
+data List a = EmptyList | a :-: (List a) deriving (Show, Read, Eq, Ord) 
+
+data Tree a = EmptyTree | Node a (Tree a) (Tree a) deriving (Eq, Show, Read)
+
+singleton :: a -> Tree a 
+singleton a = Node a (EmptyTree) (EmptyTree)
+
+treeInsert :: (Ord a) => a -> Tree a -> Tree a
+treeInsert x EmptyTree = singleton x
+treeInsert x tree@(Node y left right)
+  | x == y = tree
+  | x < y = (Node y (treeInsert x left) right)
+  | x > y = (Node y left (treeInsert x right))
+
+treeElem :: (Ord a) => a -> Tree a -> Bool
+treeElem a EmptyTree = False
+treeElem x (Node y left right)
+  | x == y = True
+  | x < y = treeElem x left
+  | x > y = treeElem x right
+
+numsTree = foldr treeInsert EmptyTree [8,6,4,1,7,3,5]
+
+data TrafficLight = Red | Yellow | Green
+
+instance Eq TrafficLight where
+  Red == Red = True
+  Yellow == Yellow = True
+  Green == Green = True
+  _ == _ = False
+
+instance Show TrafficLight where
+  show Red = "Red light"
+  show Yellow = "Yellow light"
+  show Green = "Green light"
+
+class YesNo a where
+  yesno :: a -> Bool
+
+instance YesNo Int where
+  yesno 0 = False
+  yesno _ = True
+
+instance YesNo [a] where
+  yesno [] = False
+  yesno _ = True
+
+instance YesNo Bool where
+  yesno = id
+
+instance YesNo (Maybe a) where
+  yesno (Just _) = True
+  yesno Nothing = False
+
+instance YesNo (Tree a) where
+  yesno (Node _ _ _) = True
+  yesno EmptyTree = False
+
+instance YesNo TrafficLight where
+  yesno Red = False
+  yesno _ = True
+
+yesnoIf :: (YesNo y) => y -> a -> a -> a
+yesnoIf check yesResult noResult
+  | yesno check == True = yesResult
+  | otherwise = noResult
+
+instance Functor Tree where
+  fmap f EmptyTree = EmptyTree
+  fmap f (Node x left right) = Node (f x) (fmap f left) (fmap f right)
+
+data Frank b a = Frank {frankField :: a b } deriving (Show)
+
+data Barry t k p = Barry {yabba :: p, dabba :: t k} deriving (Eq, Show)
+
+instance Functor (Barry t k) where
+  fmap f (Barry p x) = Barry (f p) x
+
+askName :: IO ()
+askName = do  
+  putStr "Hello, what's your name? "
+  name <- getLine  
+  let nameUpper = toUpper <$> name
+  printf "Hey %s, you rock!\n" nameUpper
+
+flipWords :: String -> String
+flipWords = unwords . map reverse . words
+
+reverseWords' ::  IO ()
+reverseWords' = do
+    putStr "Type a sentence: "
+    s <- getLine
+    if null s
+        then do
+          printf "Goodbye\n"
+          return ()
+        else do
+          printf "In reverse it's: %s\n" $ flipWords s
+          reverseWords
+
+reverseWords ::  IO ()
+reverseWords = do
+    putStr "Type a sentence: "
+    s <- getLine
+    when (not $ null s) $ do
+        printf "In reverse it's: %s\n" $ flipWords s
+        reverseWords'
+
+multipleReturns ::  IO ()
+multipleReturns = do  
+    return ()
+    return "HAHAHA"
+    line <- getLine
+    return "BLAH BLAH BLAH"
+    return 4
+    putChar 'H'
+    putChar 'A'
+    putChar 'H'
+    putChar 'A'
+    putChar ' '
+    putStrLn line
+
+sequenceDemo' :: IO ()
+sequenceDemo' = do  
+    rs <- sequence [getLine, getLine, getLine]  
+    sequence . map putStr $ ["You typed: "] ++ (intersperse " then " rs) ++ [".\n"]
+    return ()
+
+sequenceDemo :: IO ()
+sequenceDemo = do  
+    rs <- sequence [getLine, getLine, getLine]  
+    mapM_ putStr $ ["You typed: "] ++ (intersperse " then " rs) ++ [".\n"]
+
+foreverDemo :: IO ()
+foreverDemo = forever $ putStr "Type a sentence: " >>= (\_ -> getLine) >>= printf "You wrote: %s\n"
+
+forMDemo :: IO ()
+forMDemo = do
+    r <- forM [1,2,3,4] (\a -> do
+        printf "How do you spell %u? " (a :: Int)
+        getLine)
+    printf "Your answers were: %s\n" . foldr1 (++) . intersperse ", " $ r
+
+capsLocker :: IO ()
+capsLocker = getContents >>= return . (map toUpper) >>= putStr
+
+shortLinesOnly' :: IO ()
+shortLinesOnly' = interact result
+    where
+        shortLength = 11
+        onlyShorts  = (<= shortLength) . length
+        shortLines  = filter onlyShorts . lines
+        result      = unlines . shortLines
+        interact    = (getContents >>=) . (putStr .)
+
+shortLinesOnly :: IO ()
+shortLinesOnly = interact result
+    where
+        shortLength = 11
+        onlyShorts  = (<= shortLength) . length
+        shortLines  = filter onlyShorts . lines
+        result      = unlines . shortLines
+
+data Discern a = Between a a
+
+discern :: Discern a -> Bool -> a
+discern (Between trueValue falseValue) test
+    | test == True = trueValue
+    | otherwise    = falseValue
+
+respondPalindromes :: IO ()
+respondPalindromes = interact result
+    where
+        reverseCheck x = x == reverse x
+        isPalindrome   = discern (Between "palindrome" "not a palindrome") . reverseCheck
+        checkLines     = fmap isPalindrome
+        result         = unlines . checkLines . lines
+
+girlfriend' :: IO ()
+girlfriend' = readFile "girlfriend.txt" >>= putStr
+    where
+        readFile path = openFile path ReadMode >>= hGetContents
+
+girlfriend'' :: IO ()
+girlfriend'' = readFile "girlfriend.txt" >>= putStr
+
+girlfriend''' :: IO ()
+girlfriend''' = withFile "girlfriend.txt" ReadMode displayFromHandle
+    where
+        displayFromHandle handle = hGetContents handle >>= putStr
+
+girlfriend :: IO ()
+girlfriend = withFile "girlfriend.txt" ReadMode displayFromHandle
+    where
+        displayFromHandle handle = hGetContents handle >>= putStr
+        withFile path mode hook = openFile path mode >>= hook
+
+capGirlfriend :: IO ()
+capGirlfriend = readFile "girlfriend.txt" >>= writeFile "girlfriend_cap.txt" . fmap toUpper
+
+capendGirlfriend :: IO ()
+capendGirlfriend = readFile "girlfriend.txt" >>= appendFile "girlfriend_cap.txt" . fmap toLower
+
+todoDeleter :: IO ()
+todoDeleter =
+    do
+        resetScreen
+        todoList <- getTodoList
+        display todoList
+        index <- promptForIndex
+        deleteAt index todoList >>= writeTodo
+    where
+        todoListPath   = "todo.txt"
+        indentation    = take 4 $ repeat ' '
+        printItem      :: Int -> String -> String
+        printItem      = printf "%u - %s"
+        prefixNumber   = zipWith printItem [1..]
+        indent         = fmap (indentation++)
+        resetScreen    = clearScreen >> setCursorPosition 0 0
+        getTodoList    = readFile todoListPath >>= return . lines
+        display        = (putStrLn "Here is your todo list:" >>) . putStr . unlines . indent . prefixNumber
+        promptForIndex = putStr "What item would you like to remove: " >> hFlush stdout >> getLine >>= return . (subtract 1) . read
+        deleteAt i l   = return (splitAt i l) >>= (\(a, b) -> return . concat $ [a,tail b]) 
+        writeTodo l    = do
+            (path, fh) <- openTempFile "." todoListPath
+            hPutStr fh $ unlines l
+            hClose fh
+            renameFile path todoListPath
+            putStrLn "Done"
+
+todo :: IO ()
+todo = getArgs >>= dispatch >>= putStrLn
+    where
+        add = show
+        view = show
+        remove = show
+        replace = show
+        dispatch (action:args) = return (maybe "" ($ args) (route action))
+        routes = [("add", add), ("view", view), ("remove", remove), ("replace", replace)]
+        route action = lookup action routes
+        
