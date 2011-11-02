@@ -1,17 +1,30 @@
+{-# LANGUAGE Arrows, CPP #-}
 module Baby where
 
-import System.Console.ANSI (setCursorPosition, clearScreen)
-import Text.Printf (PrintfArg (..), printf)
-import Control.Monad (when, forever, forM, liftM)
-import Control.Applicative (ZipList (..), (<$>), (<*>))
-import Data.Function (fix)
-import Data.Char (chr, ord, toUpper, toLower)
-import Data.List (nub, intersperse, genericLength)
-import System.IO (IOMode (..), stdout, openFile, withFile, hGetContents, hClose, openTempFile, hPutStr, hFlush)
-import System.Directory (renameFile)
-import Data.Map (Map (..))
+import Control.Arrow
+import Control.Applicative (Applicative, ZipList (..), (<$>), (<*>), (*>), (<*), liftA2, pure)
+import Control.Exception (IOException (..), catch)
+import Control.Monad (MonadPlus, (<=<), forM, forever, guard, liftM, liftM2, mplus, mzero, when)
+import Control.Monad.Instances -- http://stackoverflow.com/questions/7687181
+import qualified Data.ByteString as ByteString (pack, unpack)
+import qualified Data.ByteString.Lazy as LazyByteString (cons, cons', empty, fromChunks, pack, readFile, unpack, writeFile)
+import Data.Char (chr, isDigit, ord, toLower, toUpper)
+import Data.Foldable (Foldable)
+import qualified Data.Foldable as Foldable (foldMap, foldl, foldl1, foldr, foldr1)
+import Data.Function (fix, on)
+import Data.List (find, genericLength, intercalate, intersperse, nub, sort, tails, transpose)
+import Data.List.Utils (split)
+import Data.Map (Map)
 import qualified Data.Map as Map (fromList, lookup)
+import Data.Monoid (All (..), Any (..), First (..), Last (..), Product (..), Sum (..), mappend, mconcat, mempty)
+import Data.Tuple (curry, fst, snd, swap, uncurry)
+import System.Console.ANSI (clearScreen, setCursorPosition)
+import System.Directory (doesFileExist, renameFile)
 import System.Environment (getArgs, getProgName)
+import System.IO (IOMode (ReadMode), hClose, hFlush, hGetContents, hPutStr, openFile, openTempFile, stdout, withFile)
+import System.IO.Error (isDoesNotExistError)
+import System.Random (StdGen, RandomGen, Random, getStdGen, mkStdGen, newStdGen, random, randomR, randomRIO, randomRs, randoms)
+import Text.Printf (PrintfArg, printf)
 
 doubleMe x = x + x
 
@@ -94,9 +107,9 @@ charName x = ""
 addVectors :: (Num a) => (a, a) -> (a, a) -> (a, a)
 addVectors (a, b) (c, d) = (a+c, b+d)
 
-first (a, _, _) = a
-second (_, b, _) = b
-third (_, _, c) = c
+first' (a, _, _) = a
+second' (_, b, _) = b
+third' (_, _, c) = c
 
 patternMatchInComprehensions x = [a+b | (a, b) <- x]
 
@@ -567,7 +580,7 @@ instance Functor Tree where
   fmap f EmptyTree = EmptyTree
   fmap f (Node x left right) = Node (f x) (fmap f left) (fmap f right)
 
-data Frank b a = Frank {frankField :: a b } deriving (Show)
+data Frank b a = Frank {frankField :: a b} deriving (Show)
 
 data Barry t k p = Barry {yabba :: p, dabba :: t k} deriving (Eq, Show)
 
@@ -699,41 +712,346 @@ capGirlfriend = readFile "girlfriend.txt" >>= writeFile "girlfriend_cap.txt" . f
 capendGirlfriend :: IO ()
 capendGirlfriend = readFile "girlfriend.txt" >>= appendFile "girlfriend_cap.txt" . fmap toLower
 
-todoDeleter :: IO ()
-todoDeleter =
-    do
-        resetScreen
-        todoList <- getTodoList
-        display todoList
-        index <- promptForIndex
-        deleteAt index todoList >>= writeTodo
-    where
-        todoListPath   = "todo.txt"
-        indentation    = take 4 $ repeat ' '
-        printItem      :: Int -> String -> String
-        printItem      = printf "%u - %s"
-        prefixNumber   = zipWith printItem [1..]
-        indent         = fmap (indentation++)
-        resetScreen    = clearScreen >> setCursorPosition 0 0
-        getTodoList    = readFile todoListPath >>= return . lines
-        display        = (putStrLn "Here is your todo list:" >>) . putStr . unlines . indent . prefixNumber
-        promptForIndex = putStr "What item would you like to remove: " >> hFlush stdout >> getLine >>= return . (subtract 1) . read
-        deleteAt i l   = return (splitAt i l) >>= (\(a, b) -> return . concat $ [a,tail b]) 
-        writeTodo l    = do
-            (path, fh) <- openTempFile "." todoListPath
-            hPutStr fh $ unlines l
-            hClose fh
-            renameFile path todoListPath
-            putStrLn "Done"
+-- todoDeleter :: IO ()
+-- todoDeleter =
+--     do
+--         resetScreen
+--         todoList <- getTodoList
+--         display todoList
+--         index <- promptForIndex
+--         deleteAt index todoList >>= writeTodo
+--     where
+--         todoListPath   = "todo.txt"
+--         indentation    = take 4 $ repeat ' '
+--         printItem      :: Int -> String -> String
+--         printItem      = printf "%u - %s"
+--         prefixNumber   = zipWith printItem [1..]
+--         indent         = fmap (indentation++)
+--         resetScreen    = clearScreen >> setCursorPosition 0 0
+--         getTodoList    = readFile todoListPath >>= return . lines
+--         display        = (putStrLn "Here is your todo list:" >>) . putStr . unlines . indent . prefixNumber
+--         promptForIndex = putStr "What item would you like to remove: " >> hFlush stdout >> getLine >>= return . (subtract 1) . read
+--         deleteAt i l   = return (splitAt i l) >>= (\(a, b) -> return . concat $ [a,tail b]) 
 
 todo :: IO ()
-todo = getArgs >>= dispatch >>= putStrLn
+todo = 
+    do
+        rawArgs <- getArgs
+        let
+            (action:path:args) = rawArgs
+        todoList <- getTodoList path
+        newTodoList <- maybe (fail "Invalid Action") (\func -> func path todoList args) (lookup (action) routes)
+        discern (return ()) (persist path newTodoList) (todoList == newTodoList)
     where
-        add = show
-        view = show
-        remove = show
-        replace = show
-        dispatch (action:args) = return $ maybe "" ($ args) (route action)
-        routes = [("add", add), ("view", view), ("remove", remove), ("replace", replace)]
-        route action = lookup action routes
+        discern trueValue falseValue test
+            | test == True = trueValue
+            | otherwise    = falseValue
+        getTodoList path = do
+            content <- doesFileExist path >>= discern (readFile path) (writeFile path "" >> return "")
+            return . lines $ content
+        persist path newTodoList = do
+            (tempPath, fh) <- openTempFile "." path
+            hPutStr fh $ unlines newTodoList
+            hClose fh
+            renameFile tempPath path
+        view _ todoList _ = do
+            mapM (putStrLn) $ zipWith (printf "%s - %s") (map (show) [1..]) todoList
+            return todoList
+        add path todoList additionItems = 
+            return . concat $ [todoList, additionItems]
+        remove path todoList (positionStr:_) = return newTodoList
+            where
+                position = read positionStr
+                index = position - 1
+                (firstPart, secondPart) = splitAt index todoList
+                newTodoList = concat [firstPart, tail secondPart]
+        replace path todoList (positionStr:newItem:_) = return newTodoList
+            where
+                position = read positionStr
+                index = position - 1
+                (firstPart, secondPart) = splitAt index todoList
+                newTodoList = concat [firstPart, [newItem], tail secondPart]
+        bump path todoList (positionStr:_) = return newTodoList
+            where 
+                position = read positionStr
+                index = position - 1
+                (firstPart, secondPartIncluding) = splitAt index todoList
+                item = head secondPartIncluding
+                secondPart = tail secondPartIncluding
+                newTodoList = concat [[item], firstPart, secondPart]
+        routes = [("add", add), ("view", view), ("remove", remove), ("replace", replace), ("bump", bump)]
+
+threeCoins :: StdGen -> (Bool, Bool, Bool)
+threeCoins gen = (v1, v2, v3)
+    where
+        (v1, gen') = random gen
+        (v2, gen'') = random gen'
+        (v3, _) = random gen''
+
+randoms' :: (RandomGen g, Random a) => g -> [a]
+randoms' gen = v:randoms' gen'
+    where
+        (v, gen') = random gen
+
+finiteRandoms :: (RandomGen g, Random a, Num n) => g -> n -> [a]
+finiteRandoms gen num
+    | num == 0 = []
+    | otherwise = v:finiteRandoms gen' (num-1)
+        where
+          (v, gen') = random gen
+
+twoPasswords :: IO ()
+twoPasswords = mapM_ (\a -> a >>= putStrLn) (take 2 passwords)
+    where
+        passwords = password:passwords
+        password = newStdGen >>= return . take 6 . randomRs ('a', 'z')
+
+guessOneToTen :: IO ()
+guessOneToTen = 
+    forever $ do
+        number <- newNumber
+        guessed <- firstPrompt
+        untilM (== number) (const prompt) guessed
+        correct
+    where
+        newNumber = randomRIO (1, 10) :: IO Int
+        firstPrompt = putStr "Guess what number I am thinking of: " >> readLn
+        prompt = putStr "Sorry try again: " >> readLn
+        correct = putStrLn "You guessed correct!"
+        untilM p f x
+            | p x = return ()
+            | otherwise = f x >>= untilM p f
+
+performFileCopy :: IO ()
+performFileCopy = Control.Exception.catch (perform) (handle)
+    where
+        perform = do
+            (source:dest:_) <- getArgs
+            fileCopy source dest
+        handle :: IOException -> IO ()
+        handle e
+            | isDoesNotExistError e = print e
+            | otherwise = ioError e
+        fileCopy :: FilePath -> FilePath -> IO ()
+        fileCopy source dest = LazyByteString.readFile source >>= LazyByteString.writeFile dest
+
+rpnCalulator :: (Read a, Integral a, Num a) => String -> Either String a
+rpnCalulator query = (foldl (rpnOperation) (Right []) . words $ query) >>= result
+    where
+        result stack@(r:remainingStack)
+            | 0 == length remainingStack = Right r
+            | otherwise = Left (printf "Incomplete expression with remaining numbers: %s." (show stack))
+        rpnOperation (Right stack@(n1:n2:newStack)) op
+            | op == "/" && n2 == 0 = Left "Divide by Zero"
+            | op == "/" = Right (div n1 n2:newStack)
+            | any (==op) ["x", "*"] = Right ((*) n1 n2:newStack)
+            | op == "+" = Right ((+) n1 n2:newStack)
+            | op == "-" = Right ((subtract) n1 n2:newStack)
+            | not . all (isDigit) $ op = Left (printf "Invalid operator %s" (show op))
+        rpnOperation (Right stack) v
+            | not . all (isDigit) $ v = Left (printf "Not enough operends for %s: %s" (show v) (show stack))
+            | otherwise = Right (read v:stack)
+        rpnOperation r@(Left _) _ = r
+performRpnCalulation :: IO ()
+performRpnCalulation = getArgs >>= return . rpnCalulator . head >>= either (putStrLn) (putStrLn . show)
+
+data Path a = NorthRoad a | SouthRoad a | CrossRoad a deriving (Show, Eq)
+data Route a = Route {directions :: [Path a], distance :: a} deriving (Show, Eq)
+
+instance (Ord a) => Ord (Route a) where
+    compare (Route directions1 distance1) (Route directions2 distance2)
+        | EQ == compare distance1 distance2  = (compare `on` length) directions1 directions2
+        | otherwise                          = compare distance1 distance2
+
+londonRoute = reconcileDirections . shortestDirections . foldl (shortestOnNorthAndSouth) (newRoute,newRoute) . foldr (groupByThree) [[]]
+    where
+        reconcileDirections (Route directions distance) = Route (reverse directions) distance
+        shortestDirections = uncurry min
+        appendToRoute (Route directions distance) newDirections = Route (newDirections ++ directions) sumDirections
+            where
+                sumDirections = foldl (sumPath) distance newDirections
+                sumPath distance (NorthRoad newDistance) = distance + newDistance
+                sumPath distance (SouthRoad newDistance) = distance + newDistance
+                sumPath distance (CrossRoad newDistance) = distance + newDistance
+        shortestOnNorthAndSouth (northRoute, southRoute) (northDistance:southDistance:crossDistance:[]) = (shortestNorthPoint, shortestSouthPoint)
+            where
+                northPointFromNorth = appendToRoute northRoute [NorthRoad northDistance]
+                northPointFromSouth = appendToRoute southRoute [CrossRoad crossDistance, SouthRoad southDistance]
+                southPointFromNorth = appendToRoute northRoute [CrossRoad crossDistance, NorthRoad northDistance]
+                southPointFromSouth = appendToRoute southRoute [SouthRoad southDistance]
+                shortestNorthPoint  = min northPointFromSouth northPointFromNorth
+                shortestSouthPoint  = min southPointFromSouth southPointFromNorth
+        newRoute = Route [] 0
+        groupByThree :: String -> [[Int]] -> [[Int]]
+        groupByThree rawV allThrees@(firstThree:restThrees)
+            | length firstThree < 3 = (v:firstThree):restThrees 
+            | otherwise = [v]:allThrees
+            where
+                v = read rawV
+performLondonRoute = readFile "data/london.txt" >>= return . show . londonRoute . lines
+
+performFmapExample = 
+    do
+        result <- fmap (intersperse '-' . reverse . map toUpper) $ getLine
+        printf "You said %s backwards!\n" result
+        printf "Yes you really said %s backwards!\n" result
         
+data CMaybe a = CNothing | CJust Int a deriving (Show)
+
+-- The CMaybe functor breaks the first functor law!
+instance Functor CMaybe where
+    fmap f (CJust c x) = CJust (c+1) (f x)
+    fmap _ CNothing = CNothing
+
+-- sequenceA' :: (Applicative f) => [f a] -> f [a]
+-- sequenceA' = foldr (\a b -> (:) <$> a <*> b) (pure [])
+
+sequenceA :: (Applicative f) => [f a] -> f [a]
+sequenceA = foldr (liftA2 (:)) (pure [])
+
+sequence' :: (Monad m) => [m a] -> m [a]
+sequence' = foldr (liftM2 (:)) (return [])
+
+newtype CharList = CharList {getCharList :: [Char]} deriving (Eq, Show)
+
+newtype Pair b a = Pair {getPair :: (a, b)} deriving (Eq, Show)
+
+instance Functor (Pair b) where
+    fmap f (Pair (a, b)) = Pair (f a, b)
+
+lengthCompare :: String -> String -> Ordering
+lengthCompare a b = mconcat . fmap (\f -> f a b) $ [(compare `on` length), (compare `on` vowels), compare]
+    where
+        vowels = length . filter (`elem` "aeiou")
+
+instance Foldable Tree where
+    foldMap f EmptyTree = mempty
+    foldMap f (Node x l r) = Foldable.foldMap f l `mappend` f x `mappend` Foldable.foldMap f r
+
+testTree = Node 5
+            (Node 3
+                (Node 1 EmptyTree EmptyTree)
+                (Node 6 EmptyTree EmptyTree)
+            )
+            (Node 9
+                (Node 8 EmptyTree EmptyTree)
+                (Node 10 EmptyTree EmptyTree)
+            )
+
+testTree' = Node 1
+            (Node 3
+                (Node 5 EmptyTree EmptyTree)
+                (Node 6 EmptyTree EmptyTree)
+            )
+            (Node 9
+                (Node 8 EmptyTree EmptyTree)
+                (Node 10 EmptyTree EmptyTree)
+            )
+
+applyMaybe :: Maybe a -> (a -> Maybe b) -> Maybe b
+applyMaybe (Just a) f = f a
+applyMaybe Nothing _ = Nothing
+
+type Birds = Int
+type Pole = (Birds, Birds)
+
+emptyPole' :: Pole
+emptyPole' = (0, 0)
+
+landLeft' :: Birds -> Pole -> Pole
+landLeft' c (l, r) = (l+c, r)
+
+landRight' :: Birds -> Pole -> Pole
+landRight' c (l, r) = (l, r+c)
+
+(-:) :: a -> (a -> b) -> b
+(-:) = flip ($)
+
+emptyPole :: Maybe Pole
+emptyPole = Just (0, 0)
+
+landLeft :: Birds -> Pole -> Maybe Pole
+landLeft c (l, r)
+    | abs (l+c - r) < 4 = Just (l+c, r)
+    | otherwise = Nothing
+
+landRight :: Birds -> Pole -> Maybe Pole
+landRight c (l, r)
+    | abs (r+c - l) < 4 = Just (l, r+c)
+    | otherwise = Nothing
+
+banana :: Pole -> Maybe Pole
+banana _ = Nothing
+
+foo' :: Maybe String
+foo' = Just 3 >>= (\x ->
+       Just "!" >>= (\y ->
+       Just ((show x) ++ y)))
+
+foo :: Maybe String
+foo =
+    do
+        x <- Just 3
+        let y = "!";
+            r = (show x) ++ y
+        return r
+
+marySue :: Maybe Bool
+marySue =
+    do
+        x <- Just 9
+        return (x > 8)
+
+justH :: Maybe Char
+justH =
+    do
+        x:xs <- Just "hello"
+        return x
+
+wopwop :: Maybe Char
+wopwop =
+    do
+        x:xs <- Just ""
+        return x
+
+listOfTuples :: [(Int, Char)]
+listOfTuples =
+    do
+        a <- [1, 2]
+        b <- ['a', 'b']
+        return (a, b)
+
+sevensOnly :: [Int]
+sevensOnly =
+    do
+        x <- [1..50]
+        guard ('7' `elem` show x)
+        return x
+
+type KnightPos = (Int, Int)
+
+moveKnight :: KnightPos -> [KnightPos]
+moveKnight (startX, startY) = sort result
+    where
+        inRange = and . sequence [(>0),(<9)]
+        result =
+            do
+                deltaX <- (*) <$> [-1, 1] <*> [1, 2]
+                deltaY <- (*) <$> [-1, 1] <*> [1, 2]
+                guard (abs deltaX /= abs deltaY)
+                let endX = startX + deltaX
+                    endY = startY + deltaY
+                guard (inRange endX && inRange endY)
+                return (endX, endY)
+
+in3 :: KnightPos -> [KnightPos]
+in3 startPos = sort . nub $ (return startPos >>= moveKnight >>= moveKnight >>= moveKnight)
+
+canReachIn3 :: KnightPos -> KnightPos -> Bool
+canReachIn3 startPos endPos = endPos `elem` in3 startPos
+
+isBigGang' :: (Ord a, Num a) => a -> Bool
+isBigGang' = (>9)
+
+isBigGang :: (Ord a, Num a) => a -> (Bool, String)
+isBigGang = (>9) &&& const "Compared gang size to 9."

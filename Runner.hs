@@ -1,3 +1,3 @@
 import Baby
 
-main = todo
+main = performLondonRoute
