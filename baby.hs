@@ -16,7 +16,7 @@ import Data.List (find, genericLength, intercalate, intersperse, nub, sort, tail
 import Data.List.Utils (split)
 import Data.Map (Map)
 import qualified Data.Map as Map (fromList, lookup)
-import Data.Monoid (All (..), Any (..), First (..), Last (..), Product (..), Sum (..), mappend, mconcat, mempty)
+import Data.Monoid (Monoid, All (..), Any (..), First (..), Last (..), Product (..), Sum (..), mappend, mconcat, mempty)
 import Data.Tuple (curry, fst, snd, swap, uncurry)
 import System.Console.ANSI (clearScreen, setCursorPosition)
 import System.Directory (doesFileExist, renameFile)
@@ -25,20 +25,28 @@ import System.IO (IOMode (ReadMode), hClose, hFlush, hGetContents, hPutStr, open
 import System.IO.Error (isDoesNotExistError)
 import System.Random (StdGen, RandomGen, Random, getStdGen, mkStdGen, newStdGen, random, randomR, randomRIO, randomRs, randoms)
 import Text.Printf (PrintfArg, printf)
+import Control.Monad.Writer (Writer (..), runWriter)
+
+infixl 4 ?
+c ? (t, e) = if c then t else e
 
 doubleMe x = x + x
 
-doubleUs x y = doubleMe x + doubleMe y
+doubleUs' x y = doubleMe x + doubleMe y
 
-doubleSmallNumber x = if x > 100 then x else x*2
+doubleUs = curry $ doubleMe *** doubleMe >>> uncurry (+)
 
-doubleSmallNumber' x = if x > 100 then x else x*2 + 1
+doubleSmallNumber' x = if x > 100 then x else x*2
+
+doubleSmallNumber = (>100) &&& id &&& (*2) >>> uncurry (?)
 
 conanO'Brien = "It's a-me, Conan O'Brien!"
 
 removeNonUppercase st = [c | c <- st, elem c ['A'..'Z']]
 
-addThree x y z = x + y + z
+addThree' x y z = x + y + z
+
+addThree = curry . curry $ uncurry (+) *** id >>> uncurry (+)
 
 factorial :: Integer -> Integer
 factorial n = product [1..n]
@@ -1053,5 +1061,16 @@ canReachIn3 startPos endPos = endPos `elem` in3 startPos
 isBigGang' :: (Ord a, Num a) => a -> Bool
 isBigGang' = (>9)
 
-isBigGang :: (Ord a, Num a) => a -> (Bool, String)
-isBigGang = (>9) &&& const "Compared gang size to 9."
+isBigGang :: Int -> (Bool, String)
+isBigGang = (>9) &&& printf "Compared gang size of %u to 9."
+
+applyLog :: Monoid m => (a, m) -> (a -> (b, m)) -> (b,m)
+applyLog (n,oldLog) f = let (r,log) = f n in (r, oldLog `mappend` log)
+
+type Food = String
+type Price = Sum Int
+
+addDrink :: Food -> (Food, Price)
+addDrink "beans" = ("milk", Sum 25)
+addDrink "jerky" = ("whiskey", Sum 99)
+addDrink _ = ("beer", Sum 30)

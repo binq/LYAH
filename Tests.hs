@@ -1,6 +1,7 @@
 {-# LANGUAGE Arrows, CPP #-}
 
 import Baby 
+import Control.Arrow
 import Control.Applicative (Applicative, ZipList (..), (<$>), (<*>), (*>), (<*), liftA2, pure)
 import Control.Monad (MonadPlus, (<=<), forM, forever, guard, liftM, liftM2, mplus, mzero, when)
 import Data.Foldable (Foldable)
@@ -11,12 +12,13 @@ import System.Random (StdGen, RandomGen, Random, getStdGen, mkStdGen, newStdGen,
 import Text.Printf (PrintfArg, printf)
 import Test.HUnit.Base (Test (TestCase, TestList), assertEqual)
 import Test.HUnit.Text (runTestTT)
+import Control.Monad.Writer (Writer (..), runWriter)
 
 main = do
   runTestTT $ TestList [assertEqualTestCase __LINE__ 4 $ doubleMe 2,
                         assertEqualTestCase __LINE__ 10 $ doubleUs 2 3,
                         assertEqualTestCase __LINE__ 4 $ doubleSmallNumber 2,
-                        assertEqualTestCase __LINE__ 1000 $ doubleSmallNumber' 1000,
+                        assertEqualTestCase __LINE__ 1000 $ doubleSmallNumber 1000,
                         assertEqualTestCase __LINE__ "It's a-me, Conan O'Brien!" $ conanO'Brien,
                         assertEqualTestCase __LINE__ 6 $ addThree 1 2 3,
                         assertEqualTestCase __LINE__ 24 $ factorial 4,
@@ -281,8 +283,19 @@ main = do
                         assertEqualTestCase __LINE__ False $ (6,2) `canReachIn3` (7,3),
                         assertEqualTestCase __LINE__ [9,-9,6,-6] $ sequence [id, negate] <=< sequence [(*3), (*2)] $ 3,
                         {- For a Few Monads More -}
-                        assertEqualTestCase __LINE__ (False,"Compared gang size to 9.") $ isBigGang 3,
-                        assertEqualTestCase __LINE__ (True,"Compared gang size to 9.") $ isBigGang 30,
+                        assertEqualTestCase __LINE__ (False, "Compared gang size of 3 to 9.") $ isBigGang 3,
+                        assertEqualTestCase __LINE__ (True, "Compared gang size of 30 to 9.") $ isBigGang 30,
+                        assertEqualTestCase __LINE__ (False, "Smallish gang.Compared gang size of 3 to 9.") $ (3, "Smallish gang.") `applyLog` isBigGang,
+                        assertEqualTestCase __LINE__ (True, "A freaking platoon.Compared gang size of 30 to 9.") $ (30, "A freaking platoon.") `applyLog` isBigGang,
+                        assertEqualTestCase __LINE__ (5, "Got outlaw name.Applied length.") $ ("Tobin", "Got outlaw name.") `applyLog` (length &&& const "Applied length."),
+                        assertEqualTestCase __LINE__ (7, "Got outlaw name.Applied length.") $ ("Bathcat","Got outlaw name.") `applyLog` (length &&& const "Applied length."),
+                        assertEqualTestCase __LINE__ ("milk",Sum 35) $ ("beans", Sum 10) `applyLog` addDrink,
+                        assertEqualTestCase __LINE__ ("whiskey",Sum 124) $ ("jerky", Sum 25) `applyLog` addDrink,
+                        assertEqualTestCase __LINE__ ("beer",Sum 35) $ ("dogmeat", Sum 5) `applyLog` addDrink,
+                        assertEqualTestCase __LINE__ ("beer",Sum 65) $ ("dogmeat", Sum 5) `applyLog` addDrink `applyLog` addDrink,
+                        assertEqualTestCase __LINE__ (3, "") $ runWriter (return 3 :: Writer String Int),
+                        assertEqualTestCase __LINE__ (3, Sum 0) $ runWriter (return 3 :: Writer (Sum Int) Int),
+                        assertEqualTestCase __LINE__ (3, Product 1) $ runWriter (return 3 :: Writer (Product Int) Int),
                         {- end -}
                         assertEqualTestCase __LINE__ True True]
   where
