@@ -4,6 +4,7 @@ import Baby
 import Control.Arrow
 import Control.Applicative (Applicative, ZipList (..), (<$>), (<*>), (*>), (<*), liftA2, pure)
 import Control.Monad (MonadPlus, (<=<), forM, forever, guard, liftM, liftM2, mplus, mzero, when)
+import Control.Monad.Writer (Writer, runWriter, tell, writer)
 import Data.Foldable (Foldable)
 import qualified Data.Foldable as Foldable (foldr, foldl, foldr1, foldl1, foldMap)
 import Data.List (find, genericLength, intercalate, intersperse, nub, sort, tails)
@@ -12,7 +13,6 @@ import System.Random (StdGen, RandomGen, Random, getStdGen, mkStdGen, newStdGen,
 import Text.Printf (PrintfArg, printf)
 import Test.HUnit.Base (Test (TestCase, TestList), assertEqual)
 import Test.HUnit.Text (runTestTT)
-import Control.Monad.Writer (Writer (..), runWriter)
 
 main = do
   runTestTT $ TestList [assertEqualTestCase __LINE__ 4 $ doubleMe 2,
@@ -35,7 +35,7 @@ main = do
                         assertEqualTestCase __LINE__ 6 $ head' [6, 2, 3],
                         assertEqualTestCase __LINE__ "Whiskey" $ nameit 'w',
                         assertEqualTestCase __LINE__ "Nine" $ nameit (9 :: Integer),
-                        assertEqualTestCase __LINE__ "The list has one element: [1]" $ tell [1],
+                        assertEqualTestCase __LINE__ "The list has one element: [1]" $ listTell [1],
                         assertEqualTestCase __LINE__ 3 $ length' [1, 2, 3],
                         assertEqualTestCase __LINE__ 10 $ sum' [1, 2, 3, 4],
                         assertEqualTestCase __LINE__ "The first letter of: \"Hello World!\" is 'H'" $ capital "Hello World!",
@@ -296,6 +296,14 @@ main = do
                         assertEqualTestCase __LINE__ (3, "") $ runWriter (return 3 :: Writer String Int),
                         assertEqualTestCase __LINE__ (3, Sum 0) $ runWriter (return 3 :: Writer (Sum Int) Int),
                         assertEqualTestCase __LINE__ (3, Product 1) $ runWriter (return 3 :: Writer (Product Int) Int),
+                        assertEqualTestCase __LINE__ (15, ["Got number 3.", "Got number 5.", "Gonna multiply these two"]) $ runWriter multWithLog,
+                        assertEqualTestCase __LINE__ (1, ["8 mod 3 = 2","3 mod 2 = 1", "2 mod 1 = 0", "Finished with 1"]) $ runWriter $ gcd' 8 3,
+                        assertEqualTestCase __LINE__ (3, ["9 mod 24 = 9","24 mod 9 = 6", "9 mod 6 = 3", "6 mod 3 = 0", "Finished with 3"]) $ runWriter $ gcd' 9 24,
+                        assertEqualTestCase __LINE__ 1 $ fst $ runWriter $ gcd' 8 3,
+                        assertEqualTestCase __LINE__ [1, 2, 3, 4, 1, 2, 3] $ fromDiffList $ toDiffList [1,2,3,4] `mappend` toDiffList [1,2,3],
+                        assertEqualTestCase __LINE__ (1, ["Finished with 1","2 mod 1 = 0","3 mod 2 = 1","8 mod 3 = 2"]) $ id *** fromDiffList $ runWriter $ gcdReverse 8 3,
+                        assertEqualTestCase __LINE__ 19 $ addStuff 3,
+                        assertEqualTestCase __LINE__ (5,[8,2,1]) $ stackManip [5,8,2,1],
                         {- end -}
                         assertEqualTestCase __LINE__ True True]
   where

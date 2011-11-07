@@ -1,11 +1,15 @@
 {-# LANGUAGE Arrows, CPP #-}
 module Baby where
 
+-- BEGIN IMPORTS
+
 import Control.Arrow
 import Control.Applicative (Applicative, ZipList (..), (<$>), (<*>), (*>), (<*), liftA2, pure)
 import Control.Exception (IOException (..), catch)
 import Control.Monad (MonadPlus, (<=<), forM, forever, guard, liftM, liftM2, mplus, mzero, when)
 import Control.Monad.Instances -- http://stackoverflow.com/questions/7687181
+import Control.Monad.State (State)
+import Control.Monad.Writer (Writer, runWriter, tell, writer)
 import qualified Data.ByteString as ByteString (pack, unpack)
 import qualified Data.ByteString.Lazy as LazyByteString (cons, cons', empty, fromChunks, pack, readFile, unpack, writeFile)
 import Data.Char (chr, isDigit, ord, toLower, toUpper)
@@ -25,10 +29,17 @@ import System.IO (IOMode (ReadMode), hClose, hFlush, hGetContents, hPutStr, open
 import System.IO.Error (isDoesNotExistError)
 import System.Random (StdGen, RandomGen, Random, getStdGen, mkStdGen, newStdGen, random, randomR, randomRIO, randomRs, randoms)
 import Text.Printf (PrintfArg, printf)
-import Control.Monad.Writer (Writer (..), runWriter)
+
+--- END IMPORTS
+
+--- BEGIN UTILS
 
 infixl 4 ?
 c ? (t, e) = if c then t else e
+
+decrement = subtract 1
+
+--- END UTILS
 
 doubleMe x = x + x
 
@@ -170,11 +181,11 @@ instance Nameable Integer where
   nameit 9 = "Nine"
   nameit _ = ""
 
-tell :: (Show a) => [a] -> String
-tell [] = "The list is empty"
-tell [x] = printf "The list has one element: [%s]" (show x)
-tell (x:y:[]) = printf "The list has two elements [%s, %s]" (show x) (show y)
-tell (x:y:_) = printf "This list is long.  The first two elemnts are: [%s, %s]" (show x) (show y)
+listTell :: (Show a) => [a] -> String
+listTell [] = "The list is empty"
+listTell [x] = printf "The list has one element: [%s]" (show x)
+listTell (x:y:[]) = printf "The list has two elements [%s, %s]" (show x) (show y)
+listTell (x:y:_) = printf "This list is long.  The first two elemnts are: [%s, %s]" (show x) (show y)
 
 length' :: (Num t) => [a] -> t
 length' [] = 0
@@ -1074,3 +1085,82 @@ addDrink :: Food -> (Food, Price)
 addDrink "beans" = ("milk", Sum 25)
 addDrink "jerky" = ("whiskey", Sum 99)
 addDrink _ = ("beer", Sum 30)
+
+logNumber :: Int -> Writer [String] Int  
+logNumber n = writer (n, [printf "Got number %u." $ n])
+
+multWithLog :: Writer [String] Int
+multWithLog = 
+    do
+        a <- logNumber 3
+        b <- logNumber 5
+        tell ["Gonna multiply these two"]
+        return $ a * b
+
+gcd' :: Int -> Int -> Writer [String] Int
+gcd' x y
+    | y == 0 = tell [printf "Finished with %u" x] >> return x
+    | otherwise = tell [printf "%u mod %u = %u" x y remainder] >> gcd' y remainder
+    where
+        remainder = mod x y
+
+newtype DiffList a = DiffList { getDiffList :: [a] -> [a] }
+
+toDiffList :: [a] -> DiffList a 
+toDiffList xs = DiffList (xs++)
+
+fromDiffList :: DiffList a -> [a]
+fromDiffList (DiffList f) = f []
+
+instance Monoid (DiffList a) where
+  mempty = toDiffList []
+  mappend (DiffList f) (DiffList g) = DiffList (f . g)
+
+gcdReverse :: Int -> Int -> Writer (DiffList String) Int
+gcdReverse x y
+    | y == 0 = tell (toDiffList [printf "Finished with %u" x]) >> return x
+    | otherwise = 
+        do
+           r <- gcdReverse y remainder
+           tell . toDiffList $ [printf "%u mod %u = %u" x y remainder]
+           return r
+    where
+        remainder = mod x y
+
+finalCountDown :: Int -> Writer (DiffList String) ()
+finalCountDown n
+    | n == 0 = tell . toDiffList $ ["0"]
+    | otherwise = do
+        r <- finalCountDown . decrement $ n
+        tell . toDiffList . (:[]) . show $ n
+        return r
+
+finalCountDown' :: Int -> Writer [String] ()
+finalCountDown' n
+    | n == 0 = tell ["0"]
+    | otherwise = do
+        r <- finalCountDown' . decrement $ n
+        tell . (:[]) . show $ n
+        return r
+
+addStuff :: Int -> Int
+addStuff =
+    do
+        a <- (*2)
+        b <- (+10)
+        return $ a + b
+
+type Stack a = [a]
+
+pop :: Stack a -> (a, Stack a)
+pop (x:xs) = (x, xs)
+
+push :: a -> Stack a -> ((), Stack a)
+push x xs = ((), x:xs)
+
+stackManip :: Stack Int -> (Int, Stack Int)
+stackManip s0 = final
+    where
+        (r1, s1) = push 3 s0
+        (r2, s2) = pop s1
+        final@(r3, s3) = pop s2
