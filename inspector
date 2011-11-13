@@ -1,0 +1,45 @@
+#!/usr/bin/env ruby
+class Inspector
+  attr :ghci, :handle, :cmd
+
+  def set_cmd new_cmd
+    cmd = new_cmd
+  end
+
+  def initialize
+    @handle = IO.popen("/usr/local/bin/ghci", "r+")
+    open_ghci
+    Fiber.new do
+      puts ghci.resume
+      set_cmd :quit
+    end
+  end
+
+  def open_ghci
+    @ghci ||= Fiber.new do
+      Fiber.yield io until handle.eof?
+      handle.close
+    end
+  end
+
+  def pop_cmd
+    result = cmd
+    cmd = nil
+    result
+  end
+
+  def send_cmd
+    handle.puts pop_cmd if cmd
+  end
+
+  def get_result
+    handle.gets.tap { |line| puts line }
+  end
+
+  def io
+    send_cmd
+    get_result
+  end
+end
+
+Inspector.new
