@@ -1,18 +1,26 @@
 {-# LANGUAGE Arrows, CPP #-}
 
-import Baby 
+-- BEGIN IMPORTS
+-- Loading Control.Monad.Instances to get access to (->) applicative instance: http://stackoverflow.com/questions/7687181
+
 import Control.Arrow
-import Control.Applicative (Applicative, ZipList (..), (<$>), (<*>), (*>), (<*), liftA2, pure)
-import Control.Monad (MonadPlus, (<=<), forM, forever, guard, liftM, liftM2, mplus, mzero, when)
-import Control.Monad.Writer (Writer, runWriter, tell, writer)
-import Data.Foldable (Foldable)
-import qualified Data.Foldable as Foldable (foldr, foldl, foldr1, foldl1, foldMap)
-import Data.List (find, genericLength, intercalate, intersperse, nub, sort, tails)
-import Data.Monoid (All (..), Any (..), First (..), Last (..), Product (..), Sum (..), mappend, mconcat, mempty)
-import System.Random (StdGen, RandomGen, Random, getStdGen, mkStdGen, newStdGen, random, randomR, randomRIO, randomRs, randoms)
-import Text.Printf (PrintfArg, printf)
-import Test.HUnit.Base (Test (TestCase, TestList), assertEqual)
-import Test.HUnit.Text (runTestTT)
+import Control.Applicative                              (Applicative, ZipList (..), (<$>), (<*>), (*>), (<*), liftA2, pure)
+import Control.Monad                                    (MonadPlus, (<=<), ap, forM, forever, guard, join, liftM, liftM2, liftM3, liftM4, liftM5, mplus, mzero, when)
+import Control.Monad.Error                              (strMsg)
+import Control.Monad.State                              (State (..), evalState, execState, get, put, runState, state)
+import Control.Monad.Writer                             (Writer, runWriter, tell, writer)
+import Data.Foldable                                    (Foldable)
+import qualified Data.Foldable as Foldable              (foldMap, foldl, foldl1, foldr, foldr1)
+import Data.List                                        (find, genericLength, intercalate, intersperse, nub, sort, tails, transpose)
+import Data.Monoid                                      (Monoid, All (..), Any (..), First (..), Last (..), Product (..), Sum (..), mappend, mconcat, mempty)
+import System.Random                                    (StdGen, RandomGen, Random, getStdGen, mkStdGen, newStdGen, random, randomR, randomRIO, randomRs, randoms)
+import Text.Printf                                      (PrintfArg, printf)
+
+import Baby 
+import Test.HUnit.Base                                  (Test (TestCase, TestList), assertEqual)
+import Test.HUnit.Text                                  (runTestTT)
+
+--- END IMPORTS
 
 main = do
   runTestTT $ TestList [assertEqualTestCase __LINE__ 4 $ doubleMe 2,
@@ -246,17 +254,17 @@ main = do
                         assertEqualTestCase __LINE__ (3, 1) $ emptyPole' -: landLeft' 1 -: landRight' 1 -: landLeft' 2,
                         assertEqualTestCase __LINE__ (10, 3) $ emptyPole' -: landRight' 3 -: landLeft' 10,
                         assertEqualTestCase __LINE__ (0, 2) $ emptyPole' -: landLeft' 1 -: landRight' 4 -: landLeft' (-1) -: landRight' (-2),
-                        assertEqualTestCase __LINE__ (Just (2,0)) $ landLeft 2 (0,0),
-                        assertEqualTestCase __LINE__ Nothing $ landLeft 10 (0,3),
-                        assertEqualTestCase __LINE__ (Just (2,1)) $ landRight 1 (0,0) >>= landLeft 2,
-                        assertEqualTestCase __LINE__ Nothing $ Nothing >>= landLeft 2,
-                        assertEqualTestCase __LINE__ (Just (2,4)) $ return (0,0) >>= landRight 2 >>= landLeft 2 >>= landRight 2,
-                        assertEqualTestCase __LINE__ Nothing $ return (0,0) >>= landLeft 1 >>= landRight 4 >>= landLeft (-1) >>= landRight (-2),
-                        assertEqualTestCase __LINE__ Nothing $ return (0,0) >>= landLeft 1 >>= banana >>= landRight 1,
+                        assertEqualTestCase __LINE__ (Just (2,0)) $ landLeft'' 2 (0,0),
+                        assertEqualTestCase __LINE__ Nothing $ landLeft'' 10 (0,3),
+                        assertEqualTestCase __LINE__ (Just (2,1)) $ landRight'' 1 (0,0) >>= landLeft'' 2,
+                        assertEqualTestCase __LINE__ Nothing $ Nothing >>= landLeft'' 2,
+                        assertEqualTestCase __LINE__ (Just (2,4)) $ return (0,0) >>= landRight'' 2 >>= landLeft'' 2 >>= landRight'' 2,
+                        assertEqualTestCase __LINE__ Nothing $ return (0,0) >>= landLeft'' 1 >>= landRight'' 4 >>= landLeft'' (-1) >>= landRight'' (-2),
+                        assertEqualTestCase __LINE__ Nothing $ return (0,0) >>= landLeft'' 1 >>= banana'' >>= landRight'' 1,
+                        assertEqualTestCase __LINE__ Nothing $ return (0,0) >>= landLeft'' 1 >> Nothing >>= landRight'' 1,
                         assertEqualTestCase __LINE__ Nothing $ Nothing >> Just 3,
                         assertEqualTestCase __LINE__ (Just 4) $ Just 3 >> Just 4,
                         assertEqualTestCase __LINE__ (Nothing :: Maybe Int) $ Just 3 >> Nothing,
-                        assertEqualTestCase __LINE__ Nothing $ return (0,0) >>= landLeft 1 >> Nothing >>= landRight 1,
                         assertEqualTestCase __LINE__ (Just "3!") $ Just 3 >>= (\x -> Just (show x ++ "!")),
                         assertEqualTestCase __LINE__ (Just "3!") $ Just 3 >>= (\x -> Just "!" >>= (\y -> Just (show x ++ y))),
                         assertEqualTestCase __LINE__ Nothing $ (Nothing :: Maybe Int) >>= (\x -> Just "!" >>= (\y -> Just (show x ++ y))),
@@ -303,9 +311,26 @@ main = do
                         assertEqualTestCase __LINE__ [1, 2, 3, 4, 1, 2, 3] $ fromDiffList $ toDiffList [1,2,3,4] `mappend` toDiffList [1,2,3],
                         assertEqualTestCase __LINE__ (1, ["Finished with 1","2 mod 1 = 0","3 mod 2 = 1","8 mod 3 = 2"]) $ id *** fromDiffList $ runWriter $ gcdReverse 8 3,
                         assertEqualTestCase __LINE__ 19 $ addStuff 3,
-                        assertEqualTestCase __LINE__ (5,[8,2,1]) $ stackManip [5,8,2,1],
+                        assertEqualTestCase __LINE__ (5,[8,2,1]) $ runState stackManip [5,8,2,1],
+                        assertEqualTestCase __LINE__ ((),[8,3,0,2,1,0]) $ runState stackStuff [9,0,2,1,0],
+                        assertEqualTestCase __LINE__ ((),[8,3,2,1,0]) $ runState moreStack [100,0,2,1,0],
+                        assertEqualTestCase __LINE__ [8, 3, 1] $ fst . runState stackyStack $ [1, 2, 3],
+                        assertEqualTestCase __LINE__ [9, 2, 1] $ fst . runState stackyStack $ [8, 3, 1],
+                        assertEqualTestCase __LINE__ (True,False,True) $ evalState threeCoins' $ mkStdGen 33,
+                        assertEqualTestCase __LINE__ "boom!" $ strMsg ("boom!" :: String),
+                        assertEqualTestCase __LINE__ (Left "boom" :: Num a => Either String a) $ Left "boom" >>= return . (+1),
+                        assertEqualTestCase __LINE__ (Left "no way!" :: Num a => Either String a) $ Right 100 >>= const (Left "no way!"),
+                        assertEqualTestCase __LINE__ (Right 103 :: Num a => Either a a) $ Right 3 >>= return . (+100),
+                        assertEqualTestCase __LINE__ (Right (2,0)) $ emptyPole >>= landLeft 2,
+                        assertEqualTestCase __LINE__ (Left "Fell with 10 birds perched on the left and 3 birds perched on the right.") $ return (0,3) >>= landLeft 10,
+                        assertEqualTestCase __LINE__ (Right (2,1)) $ return (0,0) >>= landRight 1 >>= landLeft 2,
+                        assertEqualTestCase __LINE__ (Left "Fell from the start") $ Left "Fell from the start" >>= landLeft 2,
+                        assertEqualTestCase __LINE__ (Right (2,4)) $ emptyPole >>= landRight 2 >>= landLeft 2 >>= landRight 2,
+                        assertEqualTestCase __LINE__ (Left "Fell with 0 birds perched on the left and 4 birds perched on the right.") $ emptyPole >>= landLeft 1 >>= landRight 4 >>= landLeft (-1) >>= landRight (-2),
+                        assertEqualTestCase __LINE__ (Left "Fell after slipping on a banana.") $ emptyPole >>= landLeft 1 >>= banana >>= landRight 1,
+                        assertEqualTestCase __LINE__ (Left "Fell for no reason") $ emptyPole >>= landLeft 1 >> Left "Fell for no reason" >>= landRight 1,
                         {- end -}
                         assertEqualTestCase __LINE__ True True]
   where
     assertEqualTestCase :: (Show a, Eq a, Num b) => b -> a -> a -> Test
-    assertEqualTestCase w x y = TestCase $ assertEqual (printf "Line: %s" $ show w) x y
+    assertEqualTestCase w x y = TestCase $ assertEqual (printf "Line: %s" (show w)) x y

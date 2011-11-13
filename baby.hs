@@ -4,31 +4,32 @@ module Baby where
 -- BEGIN IMPORTS
 
 import Control.Arrow
-import Control.Applicative (Applicative, ZipList (..), (<$>), (<*>), (*>), (<*), liftA2, pure)
-import Control.Exception (IOException (..), catch)
-import Control.Monad (MonadPlus, (<=<), forM, forever, guard, liftM, liftM2, mplus, mzero, when)
-import Control.Monad.Instances -- http://stackoverflow.com/questions/7687181
-import Control.Monad.State (State)
-import Control.Monad.Writer (Writer, runWriter, tell, writer)
-import qualified Data.ByteString as ByteString (pack, unpack)
+import Control.Applicative                              (Applicative, ZipList (..), (<$>), (<*>), (*>), (<*), liftA2, pure)
+import Control.Exception                                (IOException (..), catch)
+import Control.Monad                                    (MonadPlus, (<=<), ap, forM, forever, guard, join, liftM, liftM2, liftM3, liftM4, liftM5, mplus, mzero, when)
+import Control.Monad.Error                              (strMsg)
+import Control.Monad.Instances                          -- http://stackoverflow.com/questions/7687181
+import Control.Monad.State                              (State (..), evalState, execState, get, put, runState, state)
+import Control.Monad.Writer                             (Writer, runWriter, tell, writer)
+import qualified Data.ByteString as ByteString          (pack, unpack)
 import qualified Data.ByteString.Lazy as LazyByteString (cons, cons', empty, fromChunks, pack, readFile, unpack, writeFile)
-import Data.Char (chr, isDigit, ord, toLower, toUpper)
-import Data.Foldable (Foldable)
-import qualified Data.Foldable as Foldable (foldMap, foldl, foldl1, foldr, foldr1)
-import Data.Function (fix, on)
-import Data.List (find, genericLength, intercalate, intersperse, nub, sort, tails, transpose)
-import Data.List.Utils (split)
-import Data.Map (Map)
-import qualified Data.Map as Map (fromList, lookup)
-import Data.Monoid (Monoid, All (..), Any (..), First (..), Last (..), Product (..), Sum (..), mappend, mconcat, mempty)
-import Data.Tuple (curry, fst, snd, swap, uncurry)
-import System.Console.ANSI (clearScreen, setCursorPosition)
-import System.Directory (doesFileExist, renameFile)
-import System.Environment (getArgs, getProgName)
-import System.IO (IOMode (ReadMode), hClose, hFlush, hGetContents, hPutStr, openFile, openTempFile, stdout, withFile)
-import System.IO.Error (isDoesNotExistError)
-import System.Random (StdGen, RandomGen, Random, getStdGen, mkStdGen, newStdGen, random, randomR, randomRIO, randomRs, randoms)
-import Text.Printf (PrintfArg, printf)
+import Data.Char                                        (chr, isDigit, ord, toLower, toUpper)
+import Data.Foldable                                    (Foldable)
+import qualified Data.Foldable as Foldable              (foldMap, foldl, foldl1, foldr, foldr1)
+import Data.Function                                    (fix, on)
+import Data.List                                        (find, genericLength, intercalate, intersperse, nub, sort, tails, transpose)
+import Data.List.Utils                                  (split)
+import Data.Map                                         (Map)
+import qualified Data.Map as Map                        (fromList, lookup)
+import Data.Monoid                                      (Monoid, All (..), Any (..), First (..), Last (..), Product (..), Sum (..), mappend, mconcat, mempty)
+import Data.Tuple                                       (curry, fst, snd, swap, uncurry)
+import System.Console.ANSI                              (clearScreen, setCursorPosition)
+import System.Directory                                 (doesFileExist, renameFile)
+import System.Environment                               (getArgs, getProgName)
+import System.IO                                        (IOMode (ReadMode), hClose, hFlush, hGetContents, hPutStr, openFile, openTempFile, stdout, withFile)
+import System.IO.Error                                  (isDoesNotExistError)
+import System.Random                                    (StdGen, RandomGen, Random, getStdGen, mkStdGen, newStdGen, random, randomR, randomRIO, randomRs, randoms)
+import Text.Printf                                      (PrintfArg, printf)
 
 --- END IMPORTS
 
@@ -986,21 +987,21 @@ landRight' c (l, r) = (l, r+c)
 (-:) :: a -> (a -> b) -> b
 (-:) = flip ($)
 
-emptyPole :: Maybe Pole
-emptyPole = Just (0, 0)
+emptyPole'' :: Maybe Pole
+emptyPole'' = Just (0, 0)
 
-landLeft :: Birds -> Pole -> Maybe Pole
-landLeft c (l, r)
+landLeft'' :: Birds -> Pole -> Maybe Pole
+landLeft'' c (l, r)
     | abs (l+c - r) < 4 = Just (l+c, r)
     | otherwise = Nothing
 
-landRight :: Birds -> Pole -> Maybe Pole
-landRight c (l, r)
+landRight'' :: Birds -> Pole -> Maybe Pole
+landRight'' c (l, r)
     | abs (r+c - l) < 4 = Just (l, r+c)
     | otherwise = Nothing
 
-banana :: Pole -> Maybe Pole
-banana _ = Nothing
+banana'' :: Pole -> Maybe Pole
+banana'' _ = Nothing
 
 foo' :: Maybe String
 foo' = Just 3 >>= (\x ->
@@ -1152,15 +1153,51 @@ addStuff =
 
 type Stack a = [a]
 
-pop :: Stack a -> (a, Stack a)
-pop (x:xs) = (x, xs)
+pop :: State (Stack a) a
+pop = state $ head &&& tail
 
-push :: a -> Stack a -> ((), Stack a)
-push x xs = ((), x:xs)
+push :: a -> State (Stack a) ()
+push x = state $ const () &&& (x:)
 
-stackManip :: Stack Int -> (Int, Stack Int)
-stackManip s0 = final
+stackManip :: Num a => State (Stack a) a
+stackManip = push 3 >> pop >> pop
+
+stackStuff :: Num a => State (Stack a) ()
+stackStuff = pop >>= \x -> if x == 5 then push 5 else push 3 >> push 8
+
+moreStack :: Num a => State (Stack a) ()
+moreStack = stackManip >>= \x -> if x == 100 then stackStuff else return ()
+
+stackyStack :: Num a => State (Stack a) (Stack a)
+stackyStack = get >>= (\s -> if s == [1,2,3] then put [8,3,1] else put [9,2,1]) >> get
+
+randomSt :: (RandomGen g, Random a) => State g a
+randomSt = state random
+
+threeCoins' :: (RandomGen g) => State g (Bool,Bool,Bool)
+threeCoins' = 
+    do
+        a <- randomSt
+        b <- randomSt
+        c <- randomSt
+        return (a, b, c)
+
+emptyPole :: Either String Pole
+emptyPole = Right (0, 0)
+
+landLeft :: Birds -> Pole -> Either String Pole
+landLeft n (l, r)
+    | abs (count - r) < 4 = Right (count, r)
+    | otherwise = Left $ printf "Fell with %u birds perched on the left and %u birds perched on the right." count r
     where
-        (r1, s1) = push 3 s0
-        (r2, s2) = pop s1
-        final@(r3, s3) = pop s2
+        count = l + n
+
+landRight :: Birds -> Pole -> Either String Pole
+landRight n (l, r)
+    | abs (count - l) < 4 = Right (l, count)
+    | otherwise = Left $ printf "Fell with %u birds perched on the left and %u birds perched on the right." l count
+    where
+        count = r + n
+
+banana :: Pole -> Either String Pole
+banana _ = Left "Fell after slipping on a banana."
