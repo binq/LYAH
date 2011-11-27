@@ -330,6 +330,7 @@ main = do
                         assertEqualTestCase __LINE__ (Left "Fell after slipping on a banana.") $ emptyPole >>= landLeft 1 >>= banana >>= landRight 1,
                         assertEqualTestCase __LINE__ (Left "Fell for no reason") $ emptyPole >>= landLeft 1 >> Left "Fell for no reason" >>= landRight 1,
                         {- end -}
+                        assertEqualTestCase __LINE__ True True,
                         assertEqualTestCase __LINE__ True True]
   where
     assertEqualTestCase :: (Show a, Eq a, Num b) => b -> a -> a -> Test

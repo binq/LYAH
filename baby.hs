@@ -1,4 +1,4 @@
-{-# LANGUAGE Arrows, CPP #-}
+{-# LANGUAGE Arrows, CPP, DoRec #-}
 module Baby where
 
 -- BEGIN IMPORTS
@@ -1201,3 +1201,9 @@ landRight n (l, r)
 
 banana :: Pole -> Either String Pole
 banana _ = Left "Fell after slipping on a banana."
+
+justOnes =
+    do
+        rec
+            xs <- Just (1:xs)
+        return $ map negate xs
